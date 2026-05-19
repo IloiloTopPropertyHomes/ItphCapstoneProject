@@ -1,0 +1,184 @@
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    margin:0;
+    padding-top: 130px; /* space for navbar */
+    background-color:#f6f6f0;
+}
+.carousel-img-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    height: 650px;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 10px;
+    /* Remove top: 100px; */
+}
+
+
+/* Carousel */
+.carousel-inner { border-radius: 10px; position: relative; }
+
+.carousel-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 1s ease; /* slower fade */
+}
+
+/* Custom arrows */
+/* Carousel wrapper */
+.carousel-inner { border-radius: 10px; position: relative; }
+
+/* Carousel images */
+.carousel-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 1s ease;
+}
+
+/* Custom arrows */
+.custom-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none; /* hidden by default, show on hover */
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.4);
+    border: none;
+    border-radius: 50%;
+    padding: 12px;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 2rem;
+    color: #fff;
+    transition: background 0.3s;
+}
+
+/* Show arrows on hover */
+#propertyCarousel:hover .custom-arrow { display: flex; }
+
+/* Position arrows closer to the center */
+.prev-arrow { left: 250px; }   /* fixed distance from left */
+.next-arrow { right: 250px; }  /* fixed distance from right */
+
+/* Hover effect */
+.custom-arrow:hover { background: rgba(0,0,0,0.6); }
+
+/* Carousel image wrapper */
+.carousel-img-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    height: 650px;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width:1280px) { .carousel-img-wrapper { height:550px; } }
+@media (max-width:768px)  { .carousel-img-wrapper { height:400px; } }
+@media (max-width:576px)  { .carousel-img-wrapper { height:300px; } }
+
+
+/* Property Info Wrapper */
+.property-info-wrapper {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 15px;
+}
+
+.property-community { font-size:1rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem; }
+.property-main-title { text-transform:uppercase; font-size:2.2rem; font-weight:400; margin-bottom:1rem; }
+.property-location, .property-bedbath {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;  /* make text uppercase */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;  /* space between icon and text */
+}
+
+/* New icons (using Bootstrap Icons, change as needed) */
+.property-location i {
+    content: "\f041";  /* not used with font icons, instead change class */
+    font-size: 1.2rem;
+    color: #bfa158;
+}
+
+.property-bedbath i {
+    font-size: 1.2rem;
+    color: #bfa158;
+}
+.discover-title { text-transform:uppercase; font-size:2rem; font-weight:200; color:#bfa158; margin:1.5rem 0 0.5rem 0; }
+.property-description { font-size:1rem; line-height:1.6; color:#444; margin-bottom:1.5rem; }
+
+/* Price and Reserve Button */
+.price-reserve-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1000px;
+    margin: 1rem auto 3rem auto;
+    padding: 0 15px;
+}
+.property-price { font-size:1.5rem; color:#444; margin:0; }
+.price-reserve-wrapper {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 15px;
+}
+
+.price-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.price-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.property-price {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #444;
+    margin: 0;
+}
+.btn-vpreserve {
+    background: #bfa158;
+    border: 1px solid transparent;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 400;
+    transition: background 0.3s ease, color 0.3s ease, border 0.3s ease, transform 0.3s ease;
+    
+}
+
+.btn-vpreserve:hover {
+    background: inherit;
+    backdrop-filter: inherit;
+    -webkit-backdrop-filter: inherit;
+    border: 1px solid #bfa158;
+    color: #bfa158;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+
+
+
+/* Responsive Carousel Height */
+@media (max-width:1280px) { .carousel-img-wrapper { height:550px; } }
+@media (max-width:768px) { .carousel-img-wrapper { height:400px; } }
+@media (max-width:576px) { .carousel-img-wrapper { height:300px; } }

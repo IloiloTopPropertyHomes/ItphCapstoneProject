@@ -1,0 +1,116 @@
+<?php
+session_start();
+require_once '../backends/config.php';
+$conn = get_db_connection();
+
+// Fetch top 10 most viewed properties
+$view_query = $conn->query("
+    SELECT id, title, location, image, view_count
+    FROM propertiies
+    ORDER BY view_count DESC
+    LIMIT 10
+");
+
+$most_viewed = [];
+while($row = $view_query->fetch_assoc()) {
+    $most_viewed[] = $row;
+}
+
+
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top Properties | Iloilo Top Property Homes</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+body{ font-family:'Montserrat',sans-serif; margin:0; background:#f6f6f0; }
+.top-contact{ background:rgba(255,255,255,0.85); color:#333; font-size:0.85rem; padding:5px 30px; display:flex; justify-content:space-between; align-items:center; position:fixed; top:0; width:100%; z-index:1050; }
+.navbar{ position:fixed; top:30px; width:100%; background:#f6f6f0; z-index:1040; }
+.navbar .nav-link{ margin-left:25px; }
+.hero{ height:40vh; background-image:url('../photo/bg_2.jpg'); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:white; margin-top:60px; position:relative; }
+.hero::before{ content:""; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); }
+.hero-content{ position:relative; z-index:2; text-align:center; }
+.card-property{ border-radius:10px; box-shadow:0 3px 10px rgba(0,0,0,0.1); }
+.card-property img{ height:250px; object-fit:cover; border-radius:10px 10px 0 0; }
+.card-property .card-body h5{ color:#bfa158; font-weight:700; }
+.btn-reserve{ background:#bfa158; color:white; border:none; border-radius:4px; padding:8px 20px; font-weight:600; text-decoration:none; }
+.btn-reserve:hover{ background:#8c7a45; }
+</style>
+</head>
+<body>
+
+<!-- Top Contact -->
+<div class="top-contact">
+    <div>ITPH.com.ph | (+63) 927 933 3923</div>
+    <div>
+        <i class="bi bi-facebook me-2"></i>
+        <i class="bi bi-instagram me-2"></i>
+        <i class="bi bi-tiktok"></i>
+    </div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg">
+<div class="container">
+    <a class="navbar-brand" href="../index.php">ITPH</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav me-3">
+        <li class="nav-item"><a class="nav-link" href="../index.php">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="about_us.php">About Us</a></li>
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Properties</a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="monticello.php">Monticello</a></li>
+                <li><a class="dropdown-item" href="parc_regency.php">Parc Regency</a></li>
+                <li><a class="dropdown-item" href="deca_homes.php">Deca Homes Pavia</a></li>
+            </ul>
+        </li>
+        <li class="nav-item"><a class="nav-link" href="#">Explore</a></li>
+        <li class="nav-item"><a class="nav-link" href="contact_us.php">Contact Us</a></li>
+      </ul>
+    </div>
+</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="fw-bold">Top 10 Most Viewed Properties</h1>
+        <p>Reserve your dream property now!</p>
+    </div>
+</section>
+
+<!-- Properties Grid -->
+<div class="container my-5">
+    <div class="row g-4">
+        <?php foreach($most_viewed as $property): ?>
+        <div class="col-md-4">
+            <div class="card card-property h-100 shadow-sm">
+                <img src="../photo/<?php echo decrypt_data($property['image']); ?>" 
+                     alt="<?php echo decrypt_data($property['title']); ?>">
+                <div class="card-body">
+                    <h5><?php echo decrypt_data($property['title']); ?></h5>
+                    <p><strong>Location:</strong> <?php echo decrypt_data($property['location']); ?></p>
+                    <p><strong>Views:</strong> <?php echo $property['view_count']; ?></p>
+                    <!-- Pass property name in URL -->
+                    <a href="reservation.php?property=<?php echo urlencode(decrypt_data($property['title'])); ?>" class="btn-reserve">Reserve Now</a>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

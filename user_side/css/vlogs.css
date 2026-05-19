@@ -1,0 +1,24 @@
+/* Vlog Hero */
+.vlog-hero{
+    height:50vh; background-image:url('../../photo/bg_2.jpg'); background-size:cover; background-position:center;
+    display:flex; align-items:center; justify-content:center; color:white; position:relative; text-align:center;
+}
+.vlog-hero::before{
+    content:''; position:absolute; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.45);
+}
+.vlog-hero-content{ position:relative; z-index:2; }
+.vlog-hero h1{ font-size:3rem; font-weight:600; }
+.vlog-hero p{ font-size:1.1rem; }
+
+/* Vlog Section */
+.vlog-section{ padding:100px 0 50px 0; background:#f6f6f0; }
+.section-title{ text-align:center; margin-bottom:50px; }
+.section-title i{ font-size:3rem; color:#bfa158; }
+.section-title h2{ color:#bfa158; font-weight:700; margin-top:10px; }
+.vlog-card{ border:none; border-radius:10px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.08); transition:0.3s; background:white; }
+.vlog-card:hover{ transform:translateY(-8px); box-shadow:0 10px 25px rgba(0,0,0,0.15);}
+.vlog-video video{ width:100%; height:220px; object-fit:cover; }
+.vlog-card .card-body{ padding:18px; }
+.vlog-title{ font-weight:600; }
+.vlog-date{ font-size:0.85rem; color:#888; }

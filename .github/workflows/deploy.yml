@@ -1,5 +1,5 @@
 
-name: Deploy to InfinityFree
+name: Deploy to itphiloilo.infinityfree.me
 
 on:
   push:

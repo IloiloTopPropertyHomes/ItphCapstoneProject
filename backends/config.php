@@ -19,10 +19,10 @@ Use environment variables if available
 ------------------------------------
 */
 
-$DB_HOST = $_ENV['DB_HOST'] ?? "localhost";
+$DB_HOST = $_ENV['DB_HOST'] ?? "sql103.infinityfree.com";
 $DB_USER = $_ENV['DB_USER'] ?? "root"; // NOT root
-$DB_PASS = $_ENV['DB_PASS'] ?? "";
-$DB_NAME = $_ENV['DB_NAME'] ?? "secure_app";
+$DB_PASS = $_ENV['DB_PASS'] ?? "LMsOrmrJP2f2jb4";
+$DB_NAME = $_ENV['DB_NAME'] ?? "if0_42015557";
 
 
 /*

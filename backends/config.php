@@ -55,18 +55,28 @@ Zero Trust: No info leakage
 
 function get_db_connection(){
 
-    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME;
+    $host = $_ENV['MYSQLHOST'] ?? "localhost";
+    $user = $_ENV['MYSQLUSER'] ?? "root";
+    $pass = $_ENV['MYSQLPASSWORD'] ?? "";
+    $db   = $_ENV['MYSQLDATABASE'] ?? "";
+    $port = $_ENV['MYSQLPORT'] ?? 3306;
 
-    $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
+    try {
+        $conn = new PDO(
+            "mysql:host=$host;dbname=$db;port=$port;charset=utf8",
+            $user,
+            $pass
+        );
 
-    if ($conn->connect_error) {
-        error_log("Database Error: " . $conn->connect_error);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        return $conn;
+
+    } catch (PDOException $e) {
+        error_log("DB Error: " . $e->getMessage());
         die("Something went wrong. Please try again later.");
     }
-
-    return $conn;
 }
-
 
 /*
 ------------------------------------

@@ -10,190 +10,137 @@ session_start();
 session_regenerate_id(true);
 
 require_once __DIR__ . '/../backends/config.php';
-require_once __DIR__ . '/../vendor/autoload.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 $conn = get_db_connection();
 
 define('MAX_ATTEMPTS', 5);
-define('OTP_EXPIRY', 300); // 5 minutes
-define('RESEND_COOLDOWN', 60); // 1 minute
 
 function logAuth($conn, $uid, $role, $name, $email, $status, $method, $sess) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    $stmt = $conn->prepare("INSERT INTO auth_logs (user_id, role, fullname, email, login_status, login_method, session_status, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("issssssss", $uid, $role, $name, $email, $status, $method, $sess, $ip, $ua);
+
+    $stmt = $conn->prepare("
+        INSERT INTO auth_logs 
+        (user_id, role, fullname, email, login_status, login_method, session_status, ip_address, user_agent) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmt->bind_param(
+        "issssssss",
+        $uid,
+        $role,
+        $name,
+        $email,
+        $status,
+        $method,
+        $sess,
+        $ip,
+        $ua
+    );
+
     $stmt->execute();
     $stmt->close();
 }
 
-function generateOTP(): string {
-    return str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-}
-
-function getMailer(): PHPMailer {
-    $mail = new PHPMailer(true);
-    $mail->isSMTP();
-    $mail->Host = 'smtp.gmail.com';
-    $mail->SMTPAuth = true;
-    $mail->Username = getenv('SMTP_USER') ?: 'itph934@gmail.com';
-    $mail->Password = 'ultx hrmp btdi jzpo';
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port = 587;
-    $mail->setFrom(getenv('SMTP_USER') ?: 'itph934@gmail.com', 'RealEstate Secure Login');
-    $mail->isHTML(true);
-    return $mail;
-}
-
 $error = '';
 $success = '';
-$step = $_SESSION['login_step'] ?? 'credentials';
-$email = $_SESSION['otp_email'] ?? '';
-$maskedEmail = $email ? (substr($email, 0, 2) . '***@' . explode('@', $email)[1]) : '';
 
-// ─── HANDLE POST ───
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    
-    // STEP 1: Send OTP
-    if ($action === 'send_otp') {
-        $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL) ?: '';
-        $password = $_POST['password'] ?? '';
-        
-        if (empty($email) || empty($password)) {
-            $error = "Please enter both email and password.";
-        } else {
-            $stmt = $conn->prepare("SELECT id, username, password, login_attempts, fullname, status FROM agents WHERE gmail = ?");
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            if ($result->num_rows === 1) {
-                $agent = $result->fetch_assoc();
-                
-                if ($agent['status'] === 'suspended') {
-                    $error = "Account suspended. Contact administrator.";
-                } elseif ((int)$agent['login_attempts'] >= MAX_ATTEMPTS) {
-                    $error = "Account locked. Contact administrator.";
-                } elseif (password_verify($password, $agent['password'])) {
-                    $otp = generateOTP();
-                    $_SESSION['login_step'] = 'otp';
-                    $_SESSION['otp'] = $otp;
-                    $_SESSION['otp_expiry'] = time() + OTP_EXPIRY;
-                    $_SESSION['otp_user_id'] = (int)$agent['id'];
-                    $_SESSION['otp_email'] = $email;
-                    $_SESSION['otp_username'] = $agent['username'];
-                    $_SESSION['otp_fullname'] = $agent['fullname'];
-                    $_SESSION['otp_resend'] = time() + RESEND_COOLDOWN;
-                    
-                    try {
-                        $mail = getMailer();
-                        $mail->addAddress($email, $agent['fullname']);
-                        $mail->Subject = 'Your Login Verification Code';
-                        $mail->Body = "<div style='font-family:Arial,sans-serif;max-width:400px;margin:0 auto;'>
-                            <h2 style='color:#c9a84c;'>RealEstate Agent Portal</h2>
-                            <p>Hello <strong>" . htmlspecialchars($agent['fullname']) . "</strong>,</p>
-                            <p>Your verification code is:</p>
-                            <div style='background:#f5f5f5;padding:20px;text-align:center;font-size:32px;font-weight:bold;letter-spacing:8px;color:#0a0a0a;border-radius:8px;margin:20px 0;'>{$otp}</div>
-                            <p style='color:#666;font-size:12px;'>Expires in 5 minutes. Don't share this code.</p>
-                        </div>";
-                        $mail->send();
-                        $success = "Code sent to {$maskedEmail}";
-                    } catch (Exception $e) {
-                        $error = "Failed to send code. Please try again.";
-                        error_log("Mail error: " . $e->getMessage());
-                        unset($_SESSION['login_step'], $_SESSION['otp']);
-                    }
-                } else {
-                    $attempts = (int)$agent['login_attempts'] + 1;
-                    $rem = MAX_ATTEMPTS - $attempts;
-                    $upd = $conn->prepare("UPDATE agents SET login_attempts = ? WHERE id = ?");
-                    $upd->bind_param("ii", $attempts, $agent['id']);
-                    $upd->execute();
-                    $upd->close();
-                    $error = $rem > 0 ? "Invalid password. {$rem} attempts left." : "Account locked. Contact admin.";
-                }
+
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL) ?: '';
+    $password = $_POST['password'] ?? '';
+
+    if (empty($email) || empty($password)) {
+
+        $error = "Please enter both email and password.";
+
+    } else {
+
+        $stmt = $conn->prepare("
+            SELECT id, username, password, login_attempts, status
+            FROM agents
+            WHERE gmail = ?
+        ");
+
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+
+            $agent = $result->fetch_assoc();
+
+            if ($agent['status'] === 'suspended') {
+
+                $error = "Account suspended. Contact administrator.";
+
+            } elseif ((int)$agent['login_attempts'] >= MAX_ATTEMPTS) {
+
+                $error = "Account locked. Contact administrator.";
+
+            } elseif (password_verify($password, $agent['password'])) {
+
+                $_SESSION['id'] = $agent['id'];
+                $_SESSION['username'] = $agent['username'];
+                $_SESSION['gmail'] = $email;
+                $_SESSION['type'] = 'agent';
+
+                $reset = $conn->prepare("
+                    UPDATE agents
+                    SET login_attempts = 0,
+                        last_login = NOW()
+                    WHERE id = ?
+                ");
+
+                $reset->bind_param("i", $agent['id']);
+                $reset->execute();
+                $reset->close();
+
+                logAuth(
+                    $conn,
+                    $agent['id'],
+                    'agent',
+                    $agent['username'],
+                    $email,
+                    'success',
+                    'email',
+                    'online'
+                );
+
+                header("Location: agent_dashboard.php");
+                exit;
+
             } else {
-                $error = "Invalid credentials.";
+
+                $attempts = (int)$agent['login_attempts'] + 1;
+                $remaining = MAX_ATTEMPTS - $attempts;
+
+                $upd = $conn->prepare("
+                    UPDATE agents
+                    SET login_attempts = ?
+                    WHERE id = ?
+                ");
+
+                $upd->bind_param("ii", $attempts, $agent['id']);
+                $upd->execute();
+                $upd->close();
+
+                $error = $remaining > 0
+                    ? "Invalid password. {$remaining} attempts left."
+                    : "Account locked. Contact administrator.";
             }
-            $stmt->close();
-        }
-    }
-    
-    // STEP 2: Verify OTP
-    elseif ($action === 'verify_otp') {
-        $entered = preg_replace('/\D/', '', $_POST['otp'] ?? '');
-        
-        if (empty($_SESSION['otp'])) {
-            $error = "Session expired. Please start over.";
-            $step = 'credentials';
-            unset($_SESSION['login_step']);
-        } elseif (time() > $_SESSION['otp_expiry']) {
-            $error = "Code expired. Request a new one.";
-            unset($_SESSION['otp'], $_SESSION['otp_expiry']);
-        } elseif ($entered !== $_SESSION['otp']) {
-            $error = "Invalid code. Try again.";
+
         } else {
-            // SUCCESS
-            $uid = $_SESSION['otp_user_id'];
-            $_SESSION['id'] = $uid;
-            $_SESSION['username'] = $_SESSION['otp_username'];
-            $_SESSION['gmail'] = $_SESSION['otp_email'];
-            $_SESSION['type'] = 'agent';
-            
-            $reset = $conn->prepare("UPDATE agents SET login_attempts = 0, last_login = NOW() WHERE id = ?");
-            $reset->bind_param("i", $uid);
-            $reset->execute();
-            $reset->close();
-            
-            logAuth($conn, $uid, 'agent', $_SESSION['otp_fullname'], $_SESSION['otp_email'], 'success', 'email', 'online');
-            
-            unset($_SESSION['login_step'], $_SESSION['otp'], $_SESSION['otp_expiry'],
-                  $_SESSION['otp_user_id'], $_SESSION['otp_username'], 
-                  $_SESSION['otp_email'], $_SESSION['otp_fullname'], $_SESSION['otp_resend']);
-            
-            header("Location: agent_dashboard.php");
-            exit;
+
+            $error = "Invalid credentials.";
         }
-    }
-    
-    // Resend OTP
-    elseif ($action === 'resend_otp') {
-        if (empty($_SESSION['otp_email'])) {
-            $error = "Session expired. Start over.";
-            $step = 'credentials';
-        } elseif (isset($_SESSION['otp_resend']) && time() < $_SESSION['otp_resend']) {
-            $wait = $_SESSION['otp_resend'] - time();
-            $error = "Wait {$wait}s before resending.";
-        } else {
-            $otp = generateOTP();
-            $_SESSION['otp'] = $otp;
-            $_SESSION['otp_expiry'] = time() + OTP_EXPIRY;
-            $_SESSION['otp_resend'] = time() + RESEND_COOLDOWN;
-            
-            try {
-                $mail = getMailer();
-                $mail->addAddress($_SESSION['otp_email'], $_SESSION['otp_fullname']);
-                $mail->Subject = 'New Verification Code';
-                $mail->Body = "<div style='font-family:Arial,sans-serif;text-align:center;'>
-                    <h2 style='color:#c9a84c;'>New Code</h2>
-                    <div style='font-size:32px;font-weight:bold;letter-spacing:8px;padding:20px;background:#f5f5f5;border-radius:8px;'>{$otp}</div>
-                    <p>Expires in 5 minutes.</p>
-                </div>";
-                $mail->send();
-                $success = "New code sent!";
-            } catch (Exception $e) {
-                $error = "Failed to resend.";
-            }
-        }
+
+        $stmt->close();
     }
 }
 
 $conn->close();
-$isOtpStep = ($step === 'otp' && !empty($_SESSION['otp']));
 ?>
 <!DOCTYPE html>
 <html lang="en">

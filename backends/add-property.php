@@ -614,6 +614,7 @@ input[type="file"]{
                                     <option value="">Select Property Page</option>
                                     <option value="monticello">Monticello</option>
                                     <option value="amani">Amani House</option>
+                                    <option value="phrst">PHIRST</option>
                                 </select>
                             </div>
 

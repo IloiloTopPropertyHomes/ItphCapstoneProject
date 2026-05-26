@@ -41,14 +41,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['gmail'] = $email;
             $_SESSION['type'] = 'admin';
 
-            $log = $conn->prepare("
-                INSERT INTO auth_logs
-                (role, fullname, email, login_status, login_method, session_status, ip_address, user_agent)
-                VALUES ('admin', ?, ?, 'success', 'email', 'online', ?, ?)
-            ");
-            $log->bind_param("ssss", $username, $email, $ip, $userAgent);
-            $log->execute();
-            $log->close();
+       // Insert login log
+$log = $conn->prepare("
+    INSERT INTO auth_logs
+    (
+        user_id,
+        role,
+        fullname,
+        email,
+        login_status,
+        login_method,
+        session_status,
+        ip_address,
+        user_agent,
+        activity_time
+    )
+    VALUES
+    (?, 'admin', ?, ?, 'success', 'email', 'online', ?, ?, NOW())
+");
+
+if ($log) {
+
+    $log->bind_param(
+        "issss",
+        $admin_id,
+        $username,
+        $email,
+        $ip,
+        $userAgent
+    );
+
+    if (!$log->execute()) {
+        die("Auth log insert failed: " . $log->error);
+    }
+
+    $log->close();
+
+} else {
+    die("Prepare failed: " . $conn->error);
+}
 
             header("Location: index.php");
             exit;

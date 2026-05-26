@@ -83,14 +83,32 @@ if ($tab === 'auth') {
     $rows = $ds->get_result();
 
     // Summary counts
-    $summary = $conn->query("SELECT
+    // Summary counts (accurate unique users)
+$summary = $conn->query("
+    SELECT
         SUM(login_status='success') AS success_total,
-        SUM(login_status='failed')  AS failed_total,
-        SUM(session_status='online') AS online_total,
-        SUM(role='admin')   AS admin_total,
-        SUM(role='agent')   AS agent_total,
-        SUM(role='customer') AS customer_total
-        FROM auth_logs")->fetch_assoc();
+        SUM(login_status='failed') AS failed_total,
+
+        COUNT(DISTINCT CASE 
+            WHEN session_status='online'
+            AND activity_time >= NOW() - INTERVAL 15 MINUTE
+            THEN user_id
+        END) AS online_total,
+
+        COUNT(DISTINCT CASE 
+            WHEN role='admin' THEN user_id
+        END) AS admin_total,
+
+        COUNT(DISTINCT CASE 
+            WHEN role='agent' THEN user_id
+        END) AS agent_total,
+
+        COUNT(DISTINCT CASE 
+            WHEN role='customer' THEN user_id
+        END) AS customer_total
+
+    FROM auth_logs
+")->fetch_assoc();
 
 } else {
     $where  = "WHERE 1=1";

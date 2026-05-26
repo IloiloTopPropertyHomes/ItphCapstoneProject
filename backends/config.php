@@ -19,10 +19,10 @@ Use environment variables if available
 ------------------------------------
 */
 
-$DB_HOST = $_ENV['DB_HOST'] ?? "sql103.infinityfree.com";
+$DB_HOST = $_ENV['DB_HOST'] ?? "localhost";
 $DB_USER = $_ENV['DB_USER'] ?? "root"; // NOT root
-$DB_PASS = $_ENV['DB_PASS'] ?? "LMsOrmrJP2f2jb4";
-$DB_NAME = $_ENV['DB_NAME'] ?? "if0_42015557";
+$DB_PASS = $_ENV['DB_PASS'] ?? "";
+$DB_NAME = $_ENV['DB_NAME'] ?? "secure_app";
 
 
 /*
@@ -176,31 +176,6 @@ function log_transaction($conn, $user_id, $role, $action, $details = '') {
         VALUES (?, ?, ?, ?)
     ");
     $stmt->bind_param("isss", $user_id, $role, $action, $details);
-    $stmt->execute();
-    $stmt->close();
-}
-function logAuth($conn, $user_id, $role, $fullname, $email, $status, $method, $session_status) {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-
-    $stmt = $conn->prepare("
-        INSERT INTO auth_logs 
-        (user_id, role, fullname, email, login_status, login_method, session_status, ip_address, user_agent) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-
-    $stmt->bind_param("issssssss",
-        $user_id,
-        $role,
-        $fullname,
-        $email,
-        $status,
-        $method,
-        $session_status,
-        $ip,
-        $user_agent
-    );
-
     $stmt->execute();
     $stmt->close();
 }

@@ -71,22 +71,87 @@ if (isset($_POST['payment_installment'])) {
 }
 
 if (isset($_POST['send_notification'])) {
+
     $id = (int)$_POST['reservation_id'];
-    $stmt = $conn->prepare("SELECT fullname, email, property FROM reservations WHERE id=?");
+    $payment_method = $_POST['payment_method'];
+
+    // Current logged in admin/agent
+    $agent_id = (int)$_SESSION['id'];
+
+    // Get reservation details
+    $stmt = $conn->prepare("
+        SELECT fullname, email, property 
+        FROM reservations 
+        WHERE id=?
+    ");
+
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $stmt->bind_result($user_name, $user_email, $property_name);
     $stmt->fetch();
     $stmt->close();
 
-    $subject = "Congratulations! {$property_name}, your application is now Confirmed!";
-    $body = "Hi {$user_name},<br><br>You are now part of ITPH property holder! <strong>{$property_name}</strong> please claim the certificates including the contracts and house keys!<br>Thank you for choosing us!<br><br>— Admin Team";
-    send_gmail_notification($user_email, $user_name, $subject, $body);
+    // Update reservation
+    $update = $conn->prepare("
+        UPDATE reservations 
+        SET 
+            notification_sent = 1,
+            payment_type = ?,
+            status = 'Done',
+            agent_id = ?
+        WHERE id = ?
+    ");
 
-    $stmt = $conn->prepare("UPDATE reservations SET notification_sent=1 WHERE id=?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $stmt->close();
+    $update->bind_param("sii", $payment_method, $agent_id, $id);
+    $update->execute();
+    $update->close();
+
+    // Email subject
+    $subject = "Property Payment Confirmation";
+
+    // Email message
+    if ($payment_method === "Cash") {
+
+        $body = "
+        Hi {$user_name},<br><br>
+
+        Congratulations! Your property 
+        <strong>{$property_name}</strong> 
+        is approved for <strong>Cash Payment</strong>.<br><br>
+
+        Please visit the office for full payment,
+        contract signing, certificates, and key claiming.<br><br>
+
+        Thank you for choosing ITPH Property!<br><br>
+
+        — Admin Team
+        ";
+
+    } else {
+
+        $body = "
+        Hi {$user_name},<br><br>
+
+        Congratulations! Your property 
+        <strong>{$property_name}</strong> 
+        is approved for <strong>Installment Payment</strong>.<br><br>
+
+        Please visit the office for installment agreement,
+        contract signing, certificates, and payment scheduling.<br><br>
+
+        Thank you for choosing ITPH Property!<br><br>
+
+        — Admin Team
+        ";
+    }
+
+    // Send email
+    send_gmail_notification(
+        $user_email,
+        $user_name,
+        $subject,
+        $body
+    );
 
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
@@ -1461,13 +1526,23 @@ function isDropdownActive($filenames) {
                                                             </button>
                                                         </form>
                                                     <?php elseif ($row['status'] === 'Confirmed'): ?>
-                                                        <form method="POST" style="display: inline;">
-                                                            <input type="hidden" name="reservation_id" value="<?= $row['id'] ?>">
-                                                            <button type="submit" name="send_notification" class="btn btn-success btn-sm">
-                                                                <i class="fa-solid fa-paper-plane"></i> Notify
-                                                            </button>
-                                                        </form>
-                                                    <?php endif; ?>
+
+    <form method="POST" style="display:inline-flex; gap:8px; align-items:center;">
+        <input type="hidden" name="reservation_id" value="<?= $row['id'] ?>">
+
+        <select name="payment_method" required class="btn btn-sm" 
+            style="background:#1e293b; color:white; border:1px solid #334155;">
+            <option value="">Select Payment</option>
+            <option value="Cash">Cash</option>
+            <option value="Installment">Installment</option>
+        </select>
+
+        <button type="submit" name="send_notification" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-paper-plane"></i> Notify
+        </button>
+    </form>
+
+<?php endif; ?>
                                                 </td>
                                             </tr>
                                         <?php endwhile;

@@ -1346,20 +1346,7 @@ darkToggle.addEventListener('click', () => {
 });
 </script>
 </body>
-<script src="http://localhost:3000/socket.io/socket.io.js"></script>
 
-<script>
-const socket = io("http://localhost:3000");
-
-socket.on("connect", () => {
-    console.log("Connected to Node.js server");
-});
-
-// Example notification
-socket.on("new_property", (data) => {
-    alert("New Property Added: " + data.title);
-});
-</script>
 <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
 <script src="https://files.bpcontent.cloud/2026/05/16/02/20260516020411-RS0TP9AJ.js" defer></script>
 </html>

@@ -653,7 +653,7 @@ body {
 
 
 /* ===================== FOOTER ===================== */
-.footer { background-color: var(--gold); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
 .footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3.5rem; font-weight: 600; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
 .footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -1173,7 +1173,7 @@ body.dark-mode .footer-contact span {
             </div>
             <div class="col-lg-6" data-aos="fade-left" data-aos-delay="160">
                 <div class="hero-img-frame">
-                    <img src="../photo/nbg.jpg" alt="ITPH Community">
+                    <img src="../photo/aboutus1.jpg" alt="ITPH Community">
                     <div class="hero-badge">
                         <span class="num"><?= $total_reservations ?>+</span>
                         <span class="lbl">Happy Families</span>
@@ -1218,7 +1218,7 @@ body.dark-mode .footer-contact span {
         <div class="row align-items-center g-5">
             <div class="col-lg-5" data-aos="fade-right">
                 <div class="story-img-wrap">
-                    <img src="../photo/nbg.jpg" alt="Our Story">
+                    <img src="../photo/whoweare.png" alt="Our Story">
                 </div>
             </div>
             <div class="col-lg-7" data-aos="fade-left" data-aos-delay="80">
@@ -1449,8 +1449,7 @@ body.dark-mode .footer-contact span {
             <div class="col-md-2 mb-4">
                 <h6>Properties</h6>
                 <ul class="list-unstyled" style="line-height:2.1;">
-                    <li><a href="monticello.php">Monticello</a></li>
-                    <li><a href="amani.php">Amani Homes</a></li>
+                    <li><a href="phrst.php">PHIRST</a></li>
                 </ul>
             </div>
             <div class="col-md-4 mb-4">

@@ -7,12 +7,12 @@ require_once __DIR__ . '/google_config.php';
 $conn = get_db_connection();
 
 if (isset($_GET['code'])) {
-    $token = $google_client->fetchAccessTokenWithAuthCode($_GET['code']);
+$token = $client->fetchAccessTokenWithAuthCode($_GET['code']);
 
-    if (!isset($token['error'])) {
-        $google_client->setAccessToken($token['access_token']);
+if (!isset($token['error'])) {
+    $client->setAccessToken($token['access_token']);
 
-        $google_service = new Google_Service_Oauth2($google_client);
+    $google_service = new Google_Service_Oauth2($client);
         $google_account_info = $google_service->userinfo->get();
 
         $google_id = $google_account_info->id;

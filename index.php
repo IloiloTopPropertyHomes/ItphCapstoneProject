@@ -7,7 +7,21 @@ session_start();
 require_once ('backends/config.php');
 
 $conn = get_db_connection();
+if (isset($_SESSION['user_id'])) {
 
+    $id = $_SESSION['user_id'];
+
+    $stmt = $conn->prepare("
+        UPDATE auth_logs
+        SET last_activity = NOW(),
+            session_status = 'online'
+        WHERE user_id = ?
+          AND role = 'customer'
+    ");
+
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+}
 if (isset($_SESSION['user_id'])) {
     $conn->query("
         UPDATE auth_logs
@@ -573,7 +587,7 @@ body.loading > *:not(#loader) { visibility: hidden; }
 /* =====================
    FOOTER
 ===================== */
-.footer { background-color: var(--gold); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
 .footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3rem; font-weight: 700; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
 .footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -1019,7 +1033,7 @@ body.dark-mode .body-house {
      HERO
 ======================== -->
 <section class="hero" id="top">
-    <img src="photo/nbg.jpg" alt="Iloilo property" class="hero-img">
+    <img src="photo/nbg2.png" alt="Iloilo property" class="hero-img">
     <div class="hero-overlay"></div>
 
     <div class="hero-content">
@@ -1053,17 +1067,17 @@ body.dark-mode .body-house {
         <div class="feature-strip-grid">
             <div class="feature-strip-text" data-aos="fade-right" data-aos-duration="900">
                 <span class="section-label">House &amp; Lot</span>
-                <h2 class="section-heading">Monticello<br>Intimo Village</h2>
-                <p>A premium thematic community committed to providing a good life. Every detail within Monticello is crafted for comfort, aesthetics, and lasting value.</p>
+                <h2 class="section-heading">Amani<br>Mid Unit</h2>
+                <p>A premium thematic community committed to providing a good life. Every detail within Amani is crafted for comfort, aesthetics, and lasting value.</p>
                 <a href="user_side/monticello.php" class="strip-btn">Discover the Village <i class="bi bi-arrow-right"></i></a>
             </div>
             <div class="feature-strip-video" data-aos="fade-left" data-aos-duration="900">
                 <video id="videoSlide1" autoplay muted playsinline loop>
-                    <source src="uploads/monticello.mp4" type="video/mp4">
+                    <source src="photo/uploads/amani.mp4" type="video/mp4">
                 </video>
                 <div class="video-label">
                     <div class="vl-sub">Now Available</div>
-                    <div class="vl-title">Monticello Intimo</div>
+                    <div class="vl-title">PHIRST</div>
                 </div>
             </div>
         </div>
@@ -1072,7 +1086,7 @@ body.dark-mode .body-house {
 
 <!-- ========================
      FEATURE STRIP — SLIDE 2
-======================== -->
+======================== 
 <section class="feature-strip feature-strip-2">
     <div class="container">
         <div class="feature-strip-grid reverse">
@@ -1093,7 +1107,7 @@ body.dark-mode .body-house {
             </div>
         </div>
     </div>
-</section>
+</section>-->
 
 <!-- ========================
      SERVICES
@@ -1346,7 +1360,6 @@ darkToggle.addEventListener('click', () => {
 });
 </script>
 </body>
-
 <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
 <script src="https://files.bpcontent.cloud/2026/05/16/02/20260516020411-RS0TP9AJ.js" defer></script>
 </html>

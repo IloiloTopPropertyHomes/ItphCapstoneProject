@@ -538,7 +538,7 @@ textarea.form-control-custom {
 .chat-input-area button { background: none; border: none; color: var(--gold); font-size: 1.3rem; margin-left: 8px; cursor: pointer; }
 
 /* ===================== FOOTER ===================== */
-.footer { background-color: var(--gold); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
 .footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3.5rem; font-weight: 600; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
 .footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -1030,7 +1030,7 @@ body.dark-mode .section-heading { color: #fff; }
             <!-- IMAGE -->
             <div class="col-lg-6" data-aos="fade-left" data-aos-delay="100">
                 <div class="contact-img-wrap">
-                    <img src="../photo/uploads/1774397914_MCI Ground floor Bedroom (1).jpg" alt="ITPH Property">
+                    <img src="../photo/uploads/contact.jpg" alt="ITPH Property">
                     <div class="contact-img-badge">
                         <span class="badge-num">24/7</span>
                         <span class="badge-lbl">Support Available</span>
@@ -1100,8 +1100,7 @@ body.dark-mode .section-heading { color: #fff; }
             <div class="col-md-2 mb-4">
                 <h6>Properties</h6>
                 <ul class="list-unstyled" style="line-height:2.1;">
-                    <li><a href="monticello.php">Monticello</a></li>
-                    <li><a href="amani.php">Amani Homes</a></li>
+                    <li><a href="phrst.php">PHIRST</a></li>
                 </ul>
             </div>
             <div class="col-md-4 mb-4">

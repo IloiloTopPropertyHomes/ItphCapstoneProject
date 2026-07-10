@@ -41,7 +41,9 @@ function logAuth($conn, $uid, $role, $name, $email, $status, $method, $sess) {
     $stmt->execute();
     $stmt->close();
 }
-
+$isOtpStep = false;
+$maskedEmail = '';
+$email = '';
 $error = '';
 $success = '';
 

@@ -1,8 +1,7 @@
 <?php
 // =================== SECURITY HEADERS ===================
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.botpress.cloud https://files.bpcontent.cloud; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://cdn.botpress.cloud https://files.bpcontent.cloud wss://*.botpress.cloud https://*.botpress.cloud; frame-src https://cdn.botpress.cloud; frame-ancestors 'self'; base-uri 'self';");
-header("X-Content-Type-Options: nosniff"); 
-header("X-Frame-Options: SAMEORIGIN"); 
+header("X-Frame-Options: SAMEORIGIN");
 header("Referrer-Policy: no-referrer-when-downgrade");
 
 session_start([
@@ -15,12 +14,6 @@ require_once __DIR__ . '/../backends/config.php';
 $conn = get_db_connection();
 $currentPage = basename($_SERVER['PHP_SELF']);
 
-$allPropertiesQuery = $conn->query("SELECT DISTINCT property_page FROM propertiies ORDER BY property_page ASC");
-$allProperties = [];
-while($row = $allPropertiesQuery->fetch_assoc()){
-    $allProperties[] = $row['property_page'];
-}
-
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -31,15 +24,15 @@ $csrf_token = $_SESSION['csrf_token'];
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>All Properties — ITPH</title>
-   <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
-<script src="https://files.bpcontent.cloud/2026/05/13/12/20260513123611-N0BSRPKC.js" defer></script>
+<title>Monticello Homes Pavia — ITPH</title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
 <link rel="stylesheet" href="css/common.css">
-
+   <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
+<script src="https://files.bpcontent.cloud/2026/05/13/12/20260513123611-N0BSRPKC.js" defer></script>
 <style>
 :root {
     --gold: #bfa158;
@@ -144,7 +137,7 @@ body {
     overflow: hidden;
 }
 .page-banner::before {
-    content: 'PROPERTIES';
+    content: 'AMANI';
     position: absolute;
     right: -20px;
     top: 50%;
@@ -222,6 +215,7 @@ body {
     align-items: center;
     gap: 10px;
     padding: 11px 28px;
+    font-size: 0.95rem;
     color: var(--text-muted);
     text-decoration: none;
     letter-spacing: 0.04em;
@@ -569,6 +563,7 @@ body.dark-mode {
     background: #121212;
     color: #e5e5e5;
 }
+
 /* Navbar now transitions background and border */
 .navbar {
     transition: top 1s ease, box-shadow 1s ease, 
@@ -589,6 +584,7 @@ body * {
     transition: transform 1s ease, opacity 1s ease,
                 background 1s ease, border-color 1s ease, color 1s ease;
 }
+
 
 /* Top Contact */
 body.dark-mode .top-contact {
@@ -691,15 +687,16 @@ body.dark-mode .prop-card {
     background: #1c1c1c;
     border-color: rgba(255,255,255,0.06);
 }
+
+body.dark-mode .prop-card:hover {
+    box-shadow: 0 16px 36px rgba(0,0,0,0.3);
+}
 body.dark-mode .prop-img-wrap img {
     transition: transform 0.6s ease;
 }
 
 body.dark-mode .prop-card:hover .prop-img-wrap img {
     transform: scale(1.06);
-}
-body.dark-mode .prop-card:hover {
-    box-shadow: 0 16px 36px rgba(0,0,0,0.3);
 }
 
 body.dark-mode .prop-body h6 {
@@ -804,7 +801,6 @@ body.dark-mode .footer-contact span {
     </div>
 </div>
 
-<!-- Navbar -->
 <!-- ===================== NAVBAR ===================== -->
 <nav class="navbar navbar-expand-lg">
   <div class="container">
@@ -865,8 +861,8 @@ body.dark-mode .footer-contact span {
 <section class="page-banner">
     <div class="container">
         <span class="section-label" data-aos="fade-up">Iloilo Top Property Homes</span>
-        <h1 data-aos="fade-up" data-aos-delay="80">Find your <em>perfect home</em><br>in Iloilo.</h1>
-        <p data-aos="fade-up" data-aos-delay="160">Quality-built homes designed for comfort, convenience, and community — perfect for families and future homeowners.</p>
+        <h1 data-aos="fade-up" data-aos-delay="80">Discover <em>PHRST</em><br>San Miguel, Iloilo.</h1>
+        <p data-aos="fade-up" data-aos-delay="160">Experience affordable and modern living in the heart of Pavia, Iloilo. Quality-built homes designed for comfort, convenience, and a growing community.</p>
     </div>
 </section>
 
@@ -874,7 +870,7 @@ body.dark-mode .footer-contact span {
 <div class="properties-layout">
 
     <!-- Sidebar -->
-      <aside class="sidebar">
+    <aside class="sidebar">
         <span class="sidebar-label">Browse by</span>
         <a href="all_properties.php" class="<?= $currentPage === 'all_properties.php' ? 'active' : '' ?>">
             <i class="bi bi-grid"></i> All Properties
@@ -886,18 +882,18 @@ body.dark-mode .footer-contact span {
             <i class="bi bi-house"></i> Amani Homes
         </a>-->
         <a href="phrst.php" class="<?= $currentPage === 'phrst.php' ? 'active' : '' ?>">
-            <i class="bi bi-house"></i> PHRST Homes
+            <i class="bi bi-house"></i> PHIRST Homes
         </a>
     </aside>
 
     <!-- Content -->
     <main class="content-area">
         <?php
-        $result = $conn->query("SELECT * FROM propertiies ORDER BY id DESC");
+        $result = $conn->query("SELECT * FROM propertiies WHERE property_page='phrst' ORDER BY id DESC");
         $total = $result ? $result->num_rows : 0;
         ?>
         <div class="content-header" data-aos="fade-up">
-            <h2>All Listings</h2>
+            <h2>PHIRST Listings</h2>
             <span class="result-count"><?= $total ?> propert<?= $total === 1 ? 'y' : 'ies' ?> found</span>
         </div>
 
@@ -906,11 +902,11 @@ body.dark-mode .footer-contact span {
         if ($result && $result->num_rows > 0):
             $i = 0;
             while ($prop = $result->fetch_assoc()):
-                $title       = !empty($prop['title']) ? $prop['title'] : 'Property';
+                $title        = !empty($prop['title']) ? $prop['title'] : 'Property';
                 $propertyPage = !empty($prop['property_page']) ? $prop['property_page'] : 'Property';
-                $location    = !empty($prop['location']) ? $prop['location'] : 'Iloilo';
-                $description = !empty($prop['description']) ? $prop['description'] : 'No description available.';
-                $first_image = 'image_7.jpg';
+                $location     = !empty($prop['location']) ? $prop['location'] : 'Iloilo';
+                $description  = !empty($prop['description']) ? $prop['description'] : 'No description available.';
+                $first_image  = 'image_7.jpg';
 
                 $images = [];
                 $imageQuery = $conn->prepare("SELECT image FROM property_images WHERE property_id=?");
@@ -934,7 +930,7 @@ body.dark-mode .footer-contact span {
                     <span class="prop-units-badge"><i class="bi bi-building"></i> <?= htmlspecialchars($prop['available_units'] ?? 0) ?> units left</span>
                 </div>
                 <div class="prop-body">
-                    <h6 style="text-transform:uppercase;"><?= htmlspecialchars($title) ?></h6>
+                    <h6><?= htmlspecialchars($title) ?></h6>
                     <div class="prop-type"><?= htmlspecialchars($propertyPage) ?></div>
                     <div class="prop-location">
                         <i class="bi bi-geo-alt-fill"></i>
@@ -953,7 +949,7 @@ body.dark-mode .footer-contact span {
         <?php endwhile; else: ?>
             <div class="empty-state">
                 <i class="bi bi-house-x"></i>
-                <p>No properties available at this time.<br>Please check back soon.</p>
+                <p>No PHIRST properties available at this time.<br>Please check back soon.</p>
             </div>
         <?php endif; ?>
         </div>
@@ -1073,7 +1069,6 @@ async function sendChat() {
     }
     msgs.scrollTop = msgs.scrollHeight;
 }
-
 // =====================
 // DARK MODE SWITCH
 // =====================

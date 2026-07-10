@@ -21,6 +21,7 @@ if (isset($_POST['update_property'])) {
     $id = intval($_POST['id']);
     $available_units = intval($_POST['available_units']);
     $price = floatval($_POST['price']);
+    $description = trim($_POST['description']);
 
     if (!empty($_FILES['image']['tmp_name'])) {
 
@@ -41,13 +42,13 @@ if (isset($_POST['update_property'])) {
 
         $encryptedImage = encrypt_data($imageName);
 
-        $stmt = $conn->prepare("UPDATE propertiies SET price=?, image=?, available_units=? WHERE id=?");
-        $stmt->bind_param("diii", $price, $encryptedImage, $available_units, $id);
+        $stmt = $conn->prepare("UPDATE propertiies SET price=?, image=?, available_units=?, description=? WHERE id=?");
+        $stmt->bind_param("dsisi", $price, $encryptedImage, $available_units, $description, $id);
 
     } else {
 
-        $stmt = $conn->prepare("UPDATE propertiies SET price=?, available_units=? WHERE id=?");
-        $stmt->bind_param("dii",$price,$available_units,$id);
+        $stmt = $conn->prepare("UPDATE propertiies SET price=?, available_units=?, description=? WHERE id=?");
+        $stmt->bind_param("disi",$price,$available_units,$description,$id);
     }
     
     $stmt->execute();
@@ -845,14 +846,15 @@ td input[type="file"] {
                     <table>
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Title</th>
-                                <th>Price</th>
-                                <th>Units</th>
-                                <th>Location</th>
-                                <th>Image</th>
-                                <th>Actions</th>
-                            </tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Price</th>
+                            <th>Units</th>
+                            <th>Location</th>
+                            <th>Description</th>
+                            <th>Image</th>
+                            <th>Actions</th>
+                        </tr>
                         </thead>
 
                         <tbody>
@@ -880,6 +882,13 @@ td input[type="file"] {
                                 <td>
                                     <input type="text" value="<?= htmlspecialchars($row['location']) ?>" readonly>
                                 </td>
+                                <td>
+                                <textarea
+                                    name="description"
+                                    rows="4"
+                                    style="width:100%; min-width:300px; resize:vertical; padding:8px; background:#0f172a; color:#fff; border:1px solid #334155; border-radius:8px;"
+                                    required><?= htmlspecialchars($row['description']) ?></textarea>
+                            </td>
 
                                 <td>
                                     <input type="file" name="image">

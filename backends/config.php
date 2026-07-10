@@ -58,26 +58,26 @@ function get_db_connection(){
     $host = $_ENV['MYSQLHOST'] ?? "localhost";
     $user = $_ENV['MYSQLUSER'] ?? "root";
     $pass = $_ENV['MYSQLPASSWORD'] ?? "";
-    $db   = $_ENV['MYSQLDATABASE'] ?? "";
+    $db   = $_ENV['MYSQLDATABASE'] ?? "secure_app";
     $port = $_ENV['MYSQLPORT'] ?? 3306;
 
-    try {
-        $conn = new PDO(
-            "mysql:host=$host;dbname=$db;port=$port;charset=utf8",
-            $user,
-            $pass
-        );
+    $conn = new mysqli(
+        $host,
+        $user,
+        $pass,
+        $db,
+        $port
+    );
 
-        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        return $conn;
-
-    } catch (PDOException $e) {
-        error_log("DB Error: " . $e->getMessage());
+    if ($conn->connect_error) {
+        error_log("DB Error: " . $conn->connect_error);
         die("Something went wrong. Please try again later.");
     }
-}
 
+    $conn->set_charset("utf8mb4");
+
+    return $conn;
+}
 /*
 ------------------------------------
 ENCRYPT DATA FUNCTION (SECURE)

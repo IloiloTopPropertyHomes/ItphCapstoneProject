@@ -348,7 +348,7 @@ body {
 .filter-search-wrap input::placeholder { color: var(--text-muted); }
 
 /* ---- CONTENT PANELS ---- */
-.media-section { padding: 60px 0 100px; background: var(--white); }
+.media-section { padding: 60px 0 100px; background: var(--cream); }
 .content-panel { display: none; }
 .content-panel.active { display: block; animation: panelIn 0.4s cubic-bezier(0.4,0,0.2,1); }
 @keyframes panelIn {
@@ -844,51 +844,31 @@ body {
 .chat-input-area input:focus { border-color: var(--gold); }
 .chat-input-area button { background: none; border: none; color: var(--gold); font-size: 1.2rem; margin-left: 8px; cursor: pointer; }
 
-/* ---- FOOTER ---- */
-.footer { background: var(--dark); color: #fff; width: 100%; padding: 64px 0 0; }
-.footer .footer-brand {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.4rem;
-    font-weight: 700;
-    color: var(--gold);
-    display: block;
-    margin-bottom: 4px;
-}
-.footer h6 {
-    font-size: 0.68rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--gold-light);
-    margin-bottom: 18px;
-    font-weight: 500;
-}
-.footer-divider { width: 36px; height: 1px; background: rgba(255,255,255,0.15); border: none; margin: 14px 0 18px; }
-.footer-about-text { font-size: 0.84rem; line-height: 1.8; color: rgba(255,255,255,0.5); }
-.footer a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 0.84rem; transition: color 0.2s; }
-.footer a:hover { color: var(--gold-light); }
-.footer ul.footer-links { list-style: none; padding: 0; line-height: 2.4; }
-.footer-contact span { font-size: 0.82rem; color: rgba(255,255,255,0.45); margin: 0 6px; }
+/* ===================== FOOTER ===================== */
+.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3.5rem; font-weight: 600; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
+.footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.footer a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.88rem; }
+.footer a:hover { color: #fff; text-decoration: underline; }
+.footer-divider { width: 40px; height: 1px; background-color: rgba(255,255,255,0.5); border: none; margin: 12px auto 18px; }
+.footer-about-text { font-size: 0.87rem; line-height: 1.7; color: rgba(255,255,255,0.8); }
+.footer-contact span { font-size: 0.85rem; display: inline-block; margin: 0 6px; }
 .footer-social a {
-    color: rgba(255,255,255,0.5); margin: 0 6px;
-    font-size: 0.9rem; display: inline-flex;
-    width: 36px; height: 36px;
-    align-items: center; justify-content: center;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.12);
-    transition: var(--transition);
-}
-.footer-social a:hover { background: var(--gold); color: #fff; border-color: var(--gold); transform: translateY(-2px); }
-.footer-bottom {
-    margin-top: 48px;
-    padding: 20px 0;
-    border-top: 1px solid rgba(255,255,255,0.07);
-    display: flex;
-    justify-content: space-between;
+    color: #fff;
+    margin: 0 7px;
+    font-size: 1rem;
+    display: inline-flex;
+    width: 38px; height: 38px;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.4);
+    transition: all 0.3s ease;
 }
-.footer-bottom p { font-size: 0.76rem; color: rgba(255,255,255,0.3); margin: 0; }
+.footer-social a:hover { background: #fff; color: var(--gold); transform: scale(1.15); }
+.back-to-top { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.8rem; letter-spacing: 0.1em; transition: color 0.2s; }
+.back-to-top:hover { color: #fff; }
 
 /* ---- DARK MODE TOGGLE ---- */
 .theme-switch {
@@ -1404,50 +1384,62 @@ body.dark-mode .chat-input-area input { background: #2a2a2a; border-color: rgba(
     </div>
 </div>
 
-<!-- FOOTER -->
-<footer class="footer">
+<!-- ======================== FOOTER ======================== -->
+<footer class="footer mt-0">
     <div class="container">
-        <div class="row g-5">
-            <div class="col-lg-4 col-md-6">
-                <span class="footer-brand">ITPH</span>
+        <div class="row">
+            <div class="col-md-4 mb-4 text-center text-md-start">
+                <div class="footer-logo-text mb-2">ITPH</div>
                 <hr class="footer-divider">
-                <p class="footer-about-text">Bringing quality living closer to your future. Iloilo Top Property Homes presents beautiful houses within well-planned subdivisions in Iloilo, providing a safe environment and modern living.</p>
+                <p class="footer-about-text">Bringing quality living closer to your future. Iloilo Top Property Homes presents beautiful houses within well-planned subdivisions in Iloilo, providing a safe environment and modern living for homeowners.</p>
             </div>
-            <div class="col-lg-2 col-md-3 col-6">
+            <div class="col-md-2 mb-4">
                 <h6>Quick Links</h6>
-                <ul class="footer-links">
+                <ul class="list-unstyled" style="line-height:2.1;">
                     <li><a href="../index.php">Home</a></li>
                     <li><a href="about_us.php">About Us</a></li>
                     <li><a href="news.php">Latest News</a></li>
-                    <li><a href="vlogs.php">Media</a></li>
+                    <li><a href="vlogs.php">Vlogs</a></li>
                 </ul>
             </div>
-            <div class="col-lg-2 col-md-3 col-6">
+            <div class="col-md-2 mb-4">
                 <h6>Properties</h6>
-                <ul class="footer-links">
-                    <li><a href="monticello.php">Monticello</a></li>
-                    <li><a href="amani.php">Amani Homes</a></li>
+                <ul class="list-unstyled" style="line-height:2.1;">
+                    <li><a href="phrst.php">PHIRST</a></li>
                 </ul>
             </div>
-            <div class="col-lg-4 col-md-6">
-                <h6>Get in Touch</h6>
-                <ul class="footer-links">
+            <div class="col-md-4 mb-4">
+                <h6>Tools</h6>
+                <ul class="list-unstyled" style="line-height:2.1;">
                     <li><a href="contact_us.php">Contact Us</a></li>
                     <li><a href="reservation.php">Reserve Now</a></li>
                 </ul>
-                <div class="footer-social mt-3">
-                    <a href="#"><i class="bi bi-facebook"></i></a>
-                    <a href="#"><i class="bi bi-instagram"></i></a>
-                    <a href="#"><i class="bi bi-tiktok"></i></a>
-                </div>
             </div>
         </div>
-        <div class="footer-bottom">
-            <p>© 2026 Iloilo Top Property Homes. All rights reserved.</p>
-            <div style="display:flex;gap:20px;">
-                <a href="#" style="font-size:.74rem;color:rgba(255,255,255,0.3);">Privacy Policy</a>
-                <a href="#" style="font-size:.74rem;color:rgba(255,255,255,0.3);">Terms & Conditions</a>
-                <a href="#top" style="font-size:.74rem;color:rgba(255,255,255,0.3);">↑ Top</a>
+        <div class="row mt-2">
+            <div class="col-12 text-center">
+                <a href="#top" class="back-to-top">↑ Back to Top</a>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-center footer-contact">
+                <span><i class="bi bi-geo-alt-fill"></i> Pavia, Iloilo City</span> &nbsp;|&nbsp;
+                <span><i class="bi bi-envelope-fill"></i> ITPH.com</span> &nbsp;|&nbsp;
+                <span><i class="bi bi-telephone-fill"></i> (+63) 912 345 6789</span>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-center footer-social">
+                <a href="#"><i class="bi bi-facebook"></i></a>
+                <a href="#"><i class="bi bi-instagram"></i></a>
+                <a href="#"><i class="bi bi-tiktok"></i></a>
+            </div>
+        </div>
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0 14px;">
+        <div class="row">
+            <div class="col-12 text-center" style="font-size:0.8rem; color:rgba(255,255,255,0.6);">
+                © 2026 Iloilo Top Property Homes. All rights reserved. &nbsp;
+                <a href="#">Privacy Policy</a> | <a href="#">Terms and Conditions</a>
             </div>
         </div>
     </div>

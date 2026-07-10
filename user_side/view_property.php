@@ -27,6 +27,7 @@ $property_page = $prop['property_page'] ?? '';
 $type_map = [
     'monticello' => 'Monticello Homes Pavia',
     'amani'      => 'Amani Homes',
+    'phrst'      => 'PHIRST Park Homes',
 ];
 $type = $type_map[$property_page] ?? 'Unknown Type';
 
@@ -221,7 +222,7 @@ body {
 /* =====================
    FOOTER
 ===================== */
-.footer { background-color: var(--gold); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
 .footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3rem; font-weight: 700; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
 .footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }

@@ -8,7 +8,36 @@ session_start([
     'cookie_secure' => isset($_SERVER['HTTPS']),
     'cookie_samesite' => 'Strict'
 ]);
+require_once '../backends/config.php';
+$conn = get_db_connection();
 
+if (isset($_SESSION['user_id'])) {
+
+    $id = $_SESSION['user_id'];
+
+    $stmt = $conn->prepare("
+        UPDATE auth_logs
+        SET
+            last_activity = NOW(),
+            session_status = 'online'
+        WHERE
+            user_id = ?
+            AND role = 'customer'
+    ");
+
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->close();
+}
+require_once __DIR__ . '/../vendor/autoload.php';
+
+
+
+require_once __DIR__ . '/google_config.php';
+
+
+$client->addScope("email");
+$client->addScope("profile");
 require_once '../backends/config.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -140,56 +169,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
             $_SESSION['fullname'] = $customer['fullname'];
             $_SESSION['email'] = $customer['email'];
 
-            // ================= PREVENT DUPLICATE LOG =================
-            if (!isset($_SESSION['login_logged'])) {
-
-                $log = $conn->prepare("
-                    INSERT INTO auth_logs
-                    (user_id, role, fullname, email, login_status, login_method, session_status, ip_address, user_agent)
-                    VALUES (?, 'customer', ?, ?, 'success', 'email', 'online', ?, ?)
-                ");
-
-                $log->bind_param(
-                    "issss",
-                    $customer['id'],
-                    $customer['fullname'],
-                    $customer['email'],
-                    $ip,
-                    $userAgent
-                );
-
-                $log->execute();
-                $log->close();
-
-                $_SESSION['login_logged'] = true;
-            }
-
-            unset($_SESSION['otp_code'], $_SESSION['otp_verified']);
-
-            header("Location: ../index.php");
-            exit();
-
-        } else {
-
-            $_SESSION['login_attempts']++;
-
-            $fullname = $customer['fullname'] ?? 'unknown';
-$emailSafe = $email;
-$ipSafe = $ip;
-$userAgentSafe = $userAgent;
-
+            
 $log = $conn->prepare("
-    INSERT INTO auth_logs
-    (user_id, role, fullname, email, login_status, login_method, session_status, ip_address, user_agent)
-    VALUES (0, 'customer', ?, ?, 'failed', 'email', 'offline', ?, ?)
+INSERT INTO auth_logs
+(user_id, role, fullname, email, login_status, login_method, session_status, ip_address, user_agent, last_activity)
+VALUES (?, 'customer', ?, ?, 'success', 'email', 'online', ?, ?, NOW())
 ");
 
 $log->bind_param(
-    "ssss",
-    $fullname,
-    $emailSafe,
-    $ipSafe,
-    $userAgentSafe
+    "issss",
+    $customer['id'],
+    $customer['fullname'],
+    $customer['email'],
+    $ip,
+    $userAgent
 );
 
 $log->execute();
@@ -368,6 +361,59 @@ body {
 .alert-info { background: #fdf3e0; border: 1px solid #f0d99a; color: #7a5c00; }
 .alert-danger { background: #fdf0f0; border: 1px solid #f5c6c6; color: #7a1a1a; }
 .alert-success { background: #f0f9f0; border: 1px solid #b8e0b8; color: #1a5c1a; }
+.btn-google{
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+gap:12px;
+
+width:100%;
+
+margin-top:14px;
+
+padding:13px;
+
+border:1.5px solid #e8e5dc;
+
+border-radius:8px;
+
+background:#fff;
+
+font-family:'Montserrat',sans-serif;
+
+font-weight:700;
+
+font-size:13px;
+
+color:#1a1a2e;
+
+text-decoration:none;
+
+transition:.25s;
+
+}
+
+.btn-google:hover{
+
+border-color:#bfa158;
+
+background:#fafaf7;
+
+color:#1a1a2e;
+
+}
+
+.btn-google img{
+
+width:20px;
+
+height:20px;
+
+}
 </style>
 
 </head>
@@ -391,6 +437,7 @@ body {
       <div class="step">
         <div class="step-circle">3</div>
         <div class="step-label">Sign in</div>
+        
       </div>
     </div>
   </div>
@@ -442,6 +489,10 @@ body {
       </div>
 
       <button type="submit" name="login" class="btn-gold full">Sign In</button>
+     <a href="<?= htmlspecialchars($client->createAuthUrl()) ?>" class="btn-google">
+    <img src="https://developers.google.com/identity/images/g-logo.png" alt="">
+    Continue with Google
+</a>
 
     </form>
 

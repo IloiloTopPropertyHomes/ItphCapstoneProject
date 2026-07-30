@@ -43,6 +43,8 @@ $property = $_GET['property_page'] ?? '';
 $nav_fullname = $_SESSION['fullname'] ?? '';
 $nav_initials = strtoupper(implode('', array_map(fn($w) => $w[0], explode(' ', trim($nav_fullname)))));
 $nav_initials = substr($nav_initials, 0, 2);
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -927,12 +929,12 @@ body.dark-mode .navbar.scrolled {
 
                         <!-- Actions -->
                         <div class="d-flex justify-content-between align-items-center pt-2">
-                            <button type="button" class="btn-cancel" onclick="history.back()">
-                                <i class="bi bi-arrow-left me-1"></i> Cancel
-                            </button>
-                            <button type="submit" class="btn-confirm" id="submit-btn">
-                                Confirm Appointment <i class="bi bi-check2-circle"></i>
-                            </button>
+                           <button type="button"
+        class="btn-confirm"
+        data-bs-toggle="modal"
+        data-bs-target="#noRefundModal">
+    Confirm Appointment <i class="bi bi-check2-circle"></i>
+</button>
                         </div>
                     </form>
                 </div>
@@ -977,7 +979,86 @@ body.dark-mode .navbar.scrolled {
     </div>
   </div>
 </div>
+<!-- No Refund Policy Modal -->
+<div class="modal fade" id="noRefundModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
 
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Important Notice
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="text-center mb-3">
+                    <i class="bi bi-shield-exclamation text-danger"
+                       style="font-size:60px;"></i>
+                </div>
+
+                <p class="fw-bold">
+                    Please read before continuing.
+                </p>
+
+                <div class="alert alert-warning">
+
+                    <strong>NO REFUND POLICY</strong>
+
+                    <hr>
+
+                    Once the property transaction has been successfully completed
+                    and the payment has been made, the payment is considered
+                    <strong>FINAL</strong> and
+                    <strong>NON-REFUNDABLE.</strong>
+
+                    <br><br>
+
+                    Before proceeding, please make sure that:
+
+                    <ul class="mt-2 mb-0">
+                        <li>You have inspected the property.</li>
+                        <li>You understand the payment terms.</li>
+                        <li>You are certain about your purchase.</li>
+                    </ul>
+
+                </div>
+
+                <div class="form-check mt-3">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="acceptNoRefund">
+
+                    <label class="form-check-label" for="acceptNoRefund">
+                        I have read and understood the No Refund Policy.
+                    </label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Go Back
+                </button>
+
+                <button class="btn btn-success"
+                        id="continueReservation"
+                        disabled>
+                    I Understand & Continue
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
 <!-- Footer -->
 <footer class="footer mt-0">
     <div class="container">
@@ -1145,6 +1226,17 @@ darkToggle.addEventListener('click', () => {
     } else {
         localStorage.setItem('darkMode', 'disabled');
     }
+});
+// No Refund Policy Modal
+const noRefundCheck = document.getElementById("acceptNoRefund");
+const continueBtn = document.getElementById("continueReservation");
+
+noRefundCheck.addEventListener("change", function () {
+    continueBtn.disabled = !this.checked;
+});
+
+continueBtn.addEventListener("click", function () {
+    document.getElementById("rsv-form").submit();
 });
 </script>
 </body>

@@ -28,7 +28,14 @@
         <i class="fa fa-user-cog"></i> My Transactions
     </a>
 </div>
-    
+    <div class="nav-item">
+    <a href="upload_requirements.php">
+        <span class="nav-icon">
+            <i class="fas fa-file-upload"></i>
+        </span>
+        Upload Requirements
+    </a>
+</div>
        <div class="nav-item">
             <a href="#">
                 <i class="fa fa-blog nav-icon"></i> Messages

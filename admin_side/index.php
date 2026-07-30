@@ -3,7 +3,7 @@
     require_once __DIR__ . '/../backends/config.php';
     require_once __DIR__ . '/../backends/send_email.php';
     require_once __DIR__ . '/../vendor/autoload.php';
-require_once 'notification_helper.php';
+    require_once 'notification_helper.php';
     use Dompdf\Dompdf;
     use Dompdf\Options;
 
@@ -40,7 +40,7 @@ LIMIT 8
     // Payment handlers
     if (isset($_POST['payment_cash'])) {
         $id = (int)$_POST['reservation_id'];
-        $stmt = $conn->prepare("SELECT fullname, email, property FROM reservations WHERE id=?");
+        $stmt = $conn->prepare("SELECT fullname, email, property FROM reservations WHERE id=?F");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $stmt->bind_result($client_name, $client_email, $property);
@@ -75,7 +75,7 @@ LIMIT 8
         $update->close();
 
         $subject = "Congratulations! Your reservation is Done";
-        $body = "Hi {$client_name},<br><br>Your reservation for <strong>{$property}</strong> is now completed. Thank you for your payment!<br><br>— Admin Team";
+        $body = "Hi {$client_name},<br><br>Your payment for <strong>{$property}</strong> is now completed. Thank you for your payment!<br><br>— Admin Team";
         send_gmail_notification($client_email, $client_name, $subject, $body);
 
         header("Location: " . $_SERVER['PHP_SELF']);
@@ -151,7 +151,7 @@ LIMIT 8
             Please visit the office for installment agreement,
             contract signing, certificates, and payment scheduling.<br><br>
 
-            Thank you for choosing ITPH Property!<br><br>
+            Thank you for choosing ITPH Prnotifyfoperty!<br><br>
 
             — Admin Team
             ";
@@ -169,6 +169,105 @@ LIMIT 8
         exit();
     }
 
+    //approved done
+if(isset($_POST['approve_done'])){
+
+    $reservation_id = (int)$_POST['reservation_id'];
+
+    // Get reservation details
+    $stmt = $conn->prepare("
+        SELECT
+            fullname,
+            email,
+            property,
+            payment_type
+        FROM reservations
+        WHERE id = ?
+    ");
+
+    $stmt->bind_param("i",$reservation_id);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $reservation = $result->fetch_assoc();
+
+    $stmt->close();
+
+    // Update reservation
+    $stmt = $conn->prepare("
+        UPDATE reservations
+        SET status='Done'
+        WHERE id=?
+    ");
+
+    $stmt->bind_param("i",$reservation_id);
+    $stmt->execute();
+    $stmt->close();
+
+    // Email
+    $subject = "Your Property Transaction is Complete";
+
+    if($reservation['payment_type']=="Spot Cash"){
+
+        $body = "
+        Dear {$reservation['fullname']},<br><br>
+
+        Congratulations!
+
+        Your purchase of
+        <strong>{$reservation['property']}</strong>
+        has been completed successfully through
+        <strong>Spot Cash</strong>.
+
+        <br><br>
+
+        Thank you for choosing
+        <strong>Iloilo Top Property Homes</strong>.
+
+        <br><br>
+
+        Regards,<br>
+        ITPH Administration
+        ";
+
+    }else{
+
+        $body = "
+        Dear {$reservation['fullname']},<br><br>
+
+        Congratulations!
+
+        Your installment transaction for
+        <strong>{$reservation['property']}</strong>
+        has been successfully completed.
+
+        <br><br>
+
+        Thank you for choosing
+        <strong>Iloilo Top Property Homes</strong>.
+
+        <br><br>
+
+        Regards,<br>
+        ITPH Administration
+        ";
+
+    }
+
+    send_gmail_notification(
+
+        $reservation['email'],
+        $reservation['fullname'],
+        $subject,
+        $body
+
+    );
+
+    $_SESSION['success']="Reservation completed successfully.";
+
+    header("Location: ".$_SERVER['PHP_SELF']);
+    exit();
+}
     // Auth check
     if (!isset($_SESSION['id'])) {
         header("Location: login.php");
@@ -601,7 +700,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                 <table>
                     <tr>
                         <th>Month</th>
-                        <th>Total Reservations</th>
+                        <th>Total Appointments</th>
                     </tr>
 
                     <?php foreach ($monthly_data as $md): ?>
@@ -676,7 +775,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                 <table>
                     <tr>
                         <th>Location</th>
-                        <th>Total Reservations</th>
+                        <th>Total Appointments</th>
                     </tr>
 
                     <?php foreach ($location_data as $ld): ?>
@@ -748,7 +847,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
 
             <!-- RESERVATIONS -->
             <div class="section">
-                <h2>Reservations</h2>
+                <h2>Appointments</h2>
 
                 <table>
                     <tr>
@@ -847,717 +946,9 @@ while ($row = $revenueQuery->fetch_assoc()) {
         <title>Admin Dashboard — ITPH</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        <link rel="stylesheet" href="assets/admin.css">
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <style>
-            :root {
-                --bg: #0f172a;
-                --bg-card: #1e293b;
-                --bg-hover: #334155;
-                --border: #334155;
-                --text-primary: #f1f5f9;
-                --text-secondary: #94a3b8;
-                --text-muted: #64748b;
-                --accent: #3b82f6;
-                --accent-light: rgba(59, 130, 246, 0.15);
-                --success: #22c55e;
-                --warning: #f59e0b;
-                --danger: #ef4444;
-                --radius: 12px;
-                --radius-sm: 8px;
-                --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-                --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-            }
-
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-
-            body {
-                font-family: 'Inter', sans-serif;
-                background: var(--bg);
-                color: var(--text-primary);
-                line-height: 1.6;
-            }
-
-            /* ===== LAYOUT ===== */
-            .dashboard { display: flex; min-height: 100vh; }
-
-            /* ===== SIDEBAR ===== */
-            .sidebar {
-                width: 260px;
-                background: var(--bg-card);
-                border-right: 1px solid var(--border);
-                position: fixed;
-                height: 100vh;
-                left: 0;
-                top: 0;
-                z-index: 100;
-                overflow-y: auto;
-                overflow-x: hidden;
-                transition: transform 0.3s ease;
-            }
-
-            .sidebar-header {
-                padding: 24px 20px;
-                border-bottom: 1px solid var(--border);
-                position: sticky;
-                top: 0;
-                background: var(--bg-card);
-                z-index: 10;
-            }
-
-            .logo {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                text-decoration: none;
-                color: inherit;
-            }
-
-            .logo-icon {
-                width: 40px;
-                height: 40px;
-                background: linear-gradient(135deg, var(--accent), #60a5fa);
-                border-radius: var(--radius-sm);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                color: white;
-                flex-shrink: 0;
-            }
-
-            .logo-text {
-                font-size: 18px;
-                font-weight: 700;
-                color: var(--text-primary);
-                line-height: 1.2;
-            }
-
-            .logo-text span { color: var(--accent); }
-
-            .logo-sub {
-                font-size: 11px;
-                color: var(--text-muted);
-                margin-top: 2px;
-            }
-
-            .sidebar-nav { padding: 16px 12px; }
-
-            .nav-section {
-                padding: 16px 16px 8px;
-                font-size: 11px;
-                font-weight: 600;
-                color: var(--text-muted);
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-
-            .nav-link {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                margin-bottom: 4px;
-                color: var(--text-secondary);
-                text-decoration: none;
-                border-radius: var(--radius-sm);
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                border: none;
-                background: none;
-                width: 100%;
-                cursor: pointer;
-                font-family: inherit;
-                text-align: left;
-            }
-
-            .nav-link:hover {
-                background: var(--accent-light);
-                color: var(--text-primary);
-            }
-
-            .nav-link.active {
-                background: var(--accent-light);
-                color: var(--accent);
-            }
-
-            .nav-link.logout { color: var(--danger); }
-
-            .nav-link.logout:hover {
-                background: rgba(239, 68, 68, 0.1);
-                color: var(--danger);
-            }
-
-            .nav-link i {
-                width: 20px;
-                text-align: center;
-                font-size: 16px;
-                flex-shrink: 0;
-            }
-
-            .nav-link i.dropdown-arrow {
-                margin-left: auto;
-                font-size: 12px;
-                transition: transform 0.2s;
-                width: auto;
-            }
-
-            .nav-dropdown { margin-bottom: 4px; }
-
-            .nav-dropdown.open > .nav-link .dropdown-arrow { transform: rotate(180deg); }
-
-            .nav-dropdown.open > .dropdown-menu {
-                max-height: 200px;
-                opacity: 1;
-            }
-
-            .dropdown-menu {
-                max-height: 0;
-                opacity: 0;
-                overflow: hidden;
-                transition: all 0.3s ease;
-                padding-left: 48px;
-            }
-
-            .dropdown-item {
-                display: block;
-                padding: 10px 16px;
-                color: var(--text-muted);
-                text-decoration: none;
-                font-size: 13px;
-                font-weight: 500;
-                border-radius: 6px;
-                transition: all 0.2s;
-                margin-bottom: 2px;
-            }
-
-            .dropdown-item:hover {
-                color: var(--text-primary);
-                background: rgba(59, 130, 246, 0.05);
-            }
-
-            .dropdown-item.active {
-                color: var(--accent);
-                background: rgba(59, 130, 246, 0.1);
-            }
-
-            .sidebar-overlay {
-                display: none;
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.6);
-                z-index: 99;
-                backdrop-filter: blur(4px);
-            }
-
-            .sidebar-overlay.active { display: block; }
-
-            .sidebar::-webkit-scrollbar { width: 6px; }
-            .sidebar::-webkit-scrollbar-track { background: transparent; }
-            .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-            /* ===== MAIN CONTENT ===== */
-            .main-content {
-                flex: 1;
-                margin-left: 260px;
-                min-height: 100vh;
-            }
-
-            /* ===== TOPBAR ===== */
-            .topbar {
-                height: 64px;
-                background: var(--bg-card);
-                border-bottom: 1px solid var(--border);
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 0 24px;
-                position: sticky;
-                top: 0;
-                z-index: 50;
-            }
-
-            .topbar-left { display: flex; align-items: center; gap: 16px; }
-
-            .menu-toggle {
-                display: none;
-                background: none;
-                border: none;
-                color: var(--text-primary);
-                font-size: 20px;
-                cursor: pointer;
-                padding: 8px;
-                border-radius: var(--radius-sm);
-            }
-
-            .menu-toggle:hover { background: var(--bg-hover); }
-
-            .page-title { font-size: 20px; font-weight: 600; }
-
-            .breadcrumb {
-                font-size: 13px;
-                color: var(--text-muted);
-            }
-
-            .topbar-right { display: flex; align-items: center; gap: 16px; }
-
-            .notification-btn {
-                position: relative;
-                background: none;
-                border: none;
-                color: var(--text-secondary);
-                font-size: 18px;
-                cursor: pointer;
-                padding: 8px;
-                border-radius: var(--radius-sm);
-                transition: all 0.2s;
-            }
-
-            .notification-btn:hover {
-                background: var(--bg-hover);
-                color: var(--text-primary);
-            }
-
-            .notification-badge {
-                position: absolute;
-                top: 4px;
-                right: 4px;
-                width: 8px;
-                height: 8px;
-                background: var(--danger);
-                border-radius: 50%;
-            }
-
-            .user-menu {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 6px 12px;
-                border-radius: var(--radius-sm);
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-
-            .user-menu:hover { background: var(--bg-hover); }
-
-            .user-avatar {
-                width: 36px;
-                height: 36px;
-                background: linear-gradient(135deg, var(--accent), #60a5fa);
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 600;
-                font-size: 14px;
-                color: white;
-            }
-
-            .user-info { text-align: right; }
-
-            .user-name { font-size: 14px; font-weight: 600; }
-
-            .user-role { font-size: 12px; color: var(--text-muted); }
-
-            /* ===== CONTENT ===== */
-            .content { padding: 24px; max-width: 1400px; }
-
-            /* ===== STATS ===== */
-            .stats-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                gap: 20px;
-                margin-bottom: 24px;
-            }
-
-            .stat-card {
-                background: var(--bg-card);
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                padding: 24px;
-                position: relative;
-                overflow: hidden;
-                transition: all 0.3s;
-            }
-
-            .stat-card:hover {
-                border-color: var(--accent);
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-lg);
-            }
-
-            .stat-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 16px;
-            }
-
-            .stat-icon {
-                width: 48px;
-                height: 48px;
-                border-radius: var(--radius-sm);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 20px;
-            }
-
-            .stat-icon.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-            .stat-icon.green { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-            .stat-icon.amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-            .stat-icon.purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
-
-            .stat-trend {
-                font-size: 12px;
-                font-weight: 600;
-                padding: 4px 8px;
-                border-radius: 20px;
-            }
-
-            .stat-trend.up { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-
-            .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
-
-            .stat-label { font-size: 14px; color: var(--text-secondary); }
-
-            /* ===== ONLINE USERS ===== */
-            .online-bar {
-                display: flex;
-                gap: 16px;
-                margin-bottom: 24px;
-                flex-wrap: wrap;
-            }
-
-            .online-pill {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 16px;
-                background: var(--bg-card);
-                border: 1px solid var(--border);
-                border-radius: 100px;
-                font-size: 13px;
-                font-weight: 500;
-            }
-
-            .online-dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                animation: pulse 2s infinite;
-            }
-
-            .online-dot.green { background: var(--success); }
-            .online-dot.blue { background: var(--accent); }
-            .online-dot.amber { background: var(--warning); }
-
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.5; }
-            }
-
-            /* ===== CARDS ===== */
-            .card {
-                background: var(--bg-card);
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                margin-bottom: 24px;
-            }
-
-            .card-header {
-                padding: 20px 24px;
-                border-bottom: 1px solid var(--border);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-
-            .card-title { font-size: 18px; font-weight: 600; }
-
-            .card-subtitle {
-                font-size: 13px;
-                color: var(--text-muted);
-                margin-top: 4px;
-            }
-
-            .card-body { padding: 24px; }
-
-            /* ===== CHARTS ===== */
-            .charts-grid {
-                display: grid;
-                grid-template-columns: 2fr 1fr;
-                gap: 24px;
-                margin-bottom: 24px;
-            }
-
-            .chart-container { position: relative; height: 350px; }
-
-            /* ===== ANALYTICS SELECTOR ===== */
-            .selector-group { display: flex; gap: 8px; flex-wrap: wrap; }
-
-            .selector-btn {
-                padding: 8px 16px;
-                background: var(--bg);
-                border: 1px solid var(--border);
-                border-radius: var(--radius-sm);
-                color: var(--text-secondary);
-                font-size: 13px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-
-            .selector-btn:hover {
-                border-color: var(--accent);
-                color: var(--text-primary);
-            }
-
-            .selector-btn.active {
-                background: var(--accent);
-                border-color: var(--accent);
-                color: white;
-            }
-
-            /* ===== TABLES ===== */
-            .table-responsive { overflow-x: auto; }
-
-            table { width: 100%; border-collapse: collapse; }
-
-            th {
-                text-align: left;
-                padding: 12px 16px;
-                font-size: 12px;
-                font-weight: 600;
-                color: var(--text-muted);
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                border-bottom: 1px solid var(--border);
-                white-space: nowrap;
-            }
-
-            td {
-                padding: 14px 16px;
-                font-size: 14px;
-                border-bottom: 1px solid var(--border);
-                color: var(--text-primary);
-            }
-
-            tr:hover td { background: rgba(255, 255, 255, 0.02); }
-
-            .td-name { font-weight: 600; }
-
-            .td-email {
-                color: var(--text-secondary);
-                font-size: 13px;
-            }
-
-            /* ===== BADGES ===== */
-            .badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 6px 12px;
-                border-radius: 100px;
-                font-size: 12px;
-                font-weight: 600;
-            }
-
-            .badge-pending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-            .badge-confirmed { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-            .badge-done { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-
-            .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
-
-            /* ===== BUTTONS ===== */
-            .btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 10px 18px;
-                border-radius: var(--radius-sm);
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s;
-                border: none;
-                font-family: inherit;
-            }
-
-            .btn-primary {
-                background: var(--accent);
-                color: white;
-            }
-
-            .btn-primary:hover {
-                background: #2563eb;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            }
-
-            .btn-success { background: var(--success); color: white; }
-
-            .btn-success:hover { background: #16a34a; }
-
-            .btn-sm { padding: 6px 12px; font-size: 12px; }
-
-            /* ===== TABS ===== */
-            .tabs {
-                display: flex;
-                gap: 4px;
-                margin-bottom: 20px;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .tab {
-                padding: 12px 20px;
-                color: var(--text-secondary);
-                font-size: 14px;
-                font-weight: 500;
-                cursor: pointer;
-                border-bottom: 2px solid transparent;
-                transition: all 0.2s;
-                background: none;
-                border-top: none;
-                border-left: none;
-                border-right: none;
-                font-family: inherit;
-            }
-
-            .tab:hover { color: var(--text-primary); }
-
-            .tab.active {
-                color: var(--accent);
-                border-bottom-color: var(--accent);
-            }
-
-            /* ===== EMPTY STATE ===== */
-            .empty-state {
-                text-align: center;
-                padding: 48px 24px;
-                color: var(--text-muted);
-            }
-
-            .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-
-            /* ===== SCROLLBAR ===== */
-            ::-webkit-scrollbar { width: 8px; height: 8px; }
-            ::-webkit-scrollbar-track { background: var(--bg); }
-            ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-            ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-            /* ===== RESPONSIVE ===== */
-            @media (max-width: 1024px) {
-                .charts-grid { grid-template-columns: 1fr; }
-            }
-
-            @media (max-width: 768px) {
-                .sidebar { transform: translateX(-100%); }
-                .sidebar.open { transform: translateX(0); }
-                .main-content { margin-left: 0; }
-                .menu-toggle { display: block; }
-                .stats-grid { grid-template-columns: 1fr; }
-                .online-bar { justify-content: center; }
-                .content { padding: 16px; }
-                .card-header {
-                    flex-direction: column;
-                    gap: 12px;
-                    align-items: flex-start;
-                }
-                .selector-group { width: 100%; }
-                .selector-btn { flex: 1; text-align: center; }
-                .user-info { display: none; }
-            }
-            .notification{
-    position:relative;
-}
-
-.notification-btn{
-    background:none;
-    border:none;
-    cursor:pointer;
-    font-size:22px;
-    color:#fff;
-    position:relative;
-}
-
-.notification-count{
-    position:absolute;
-    top:-6px;
-    right:-8px;
-    background:red;
-    color:#fff;
-    border-radius:50%;
-    width:20px;
-    height:20px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:11px;
-    font-weight:bold;
-}
-
-.notification-dropdown{
-    display:none;
-    position:absolute;
-    right:0;
-    top:45px;
-    width:340px;
-    background:#fff;
-    border-radius:10px;
-    box-shadow:0 5px 20px rgba(0,0,0,.2);
-    z-index:999;
-    max-height:400px;
-    overflow-y:auto;
-}
-
-.notification-item{
-    padding:15px;
-    border-bottom:1px solid #eee;
-}
-
-.notification-item:hover{
-    background:#f5f5f5;
-}
-.topbar-right{
-    display:flex;
-    align-items:center;
-    gap:15px;
-    position:relative;
-}
-
-.notification{
-    position:relative;
-}
-
-.notification-dropdown{
-    display:none;
-    position:absolute;
-    top:45px;
-    right:0;
-    width:350px;
-    background:#fff;
-    border-radius:10px;
-    box-shadow:0 10px 25px rgba(0,0,0,.2);
-    overflow:hidden;
-    z-index:99999;
-    max-height:400px;
-    overflow-y:auto;
-}
-
-.notification-item{
-    padding:15px;
-    border-bottom:1px solid #eee;
-}
-
-.notification-item:last-child{
-    border-bottom:none;
-}
-
-.notification-item:hover{
-    background:#f5f5f5;
-}
-        </style>
+        
     </head>
 
     <body>
@@ -2043,20 +1434,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
 
 </div>
 
-                        <!-- PIE CHART -->
-                        <div class="card">
-                            <div class="card-header">
-                                <div>
-                                    <div class="card-title">Property Views</div>
-                                    <div class="card-subtitle">Most popular listings</div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="viewsChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
+                     
                     </div>
 
                     <!-- ANALYTICS CARD -->
@@ -2087,7 +1465,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                     <div class="card">
                         <div class="card-header">
                             <div>
-                                <div class="card-title">Recent Reservations</div>
+                                <div class="card-title">Recent Appointments</div>
                                 <div class="card-subtitle">Latest booking activity</div>
                             </div>
                             <a href="?download_report=1" class="btn btn-primary btn-sm">
@@ -2146,24 +1524,42 @@ while ($row = $revenueQuery->fetch_assoc()) {
                                                                     <i class="fa-solid fa-check"></i> Confirm
                                                                 </button>
                                                             </form>
-                                                        <?php elseif ($row['status'] === 'Confirmed'): ?>
+                                                    
 
-        <form method="POST" style="display:inline-flex; gap:8px; align-items:center;">
-            <input type="hidden" name="reservation_id" value="<?= $row['id'] ?>">
+<?php elseif ($row['status']=="Waiting Admin Approval"): ?>
 
-            <select name="payment_method" required class="btn btn-sm" 
-                style="background:#1e293b; color:white; border:1px solid #334155;">
-                <option value="">Select Payment</option>
-                <option value="Cash">Cash</option>
-                <option value="Installment">Installment</option>
-            </select>
+<form method="POST">
 
-            <button type="submit" name="send_notification" class="btn btn-success btn-sm">
-                <i class="fa-solid fa-paper-plane"></i> Notify
-            </button>
-        </form>
+<input
+type="hidden"
+name="reservation_id"
+value="<?= $row['id'] ?>">
 
-    <?php endif; ?>
+<button
+class="btn btn-success btn-sm"
+name="approve_done">
+
+<i class="fa-solid fa-check"></i>
+
+Done
+
+</button>
+
+</form>
+
+
+
+
+
+<?php elseif ($row['status'] === 'Done'): ?>
+
+<span class="badge badge-done">
+
+Completed
+
+</span>
+
+<?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endwhile;
@@ -2172,7 +1568,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                                                 <td colspan="5">
                                                     <div class="empty-state">
                                                         <i class="fa-solid fa-inbox"></i>
-                                                        <p>No reservations found</p>
+                                                        <p>No Appointments found</p>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -2183,62 +1579,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                         </div>
                     </div>
 
-                    <!-- CONTACT MESSAGES -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div>
-                                <div class="card-title">Contact Messages</div>
-                                <div class="card-subtitle">Recent inquiries from clients</div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Contact</th>
-                                            <th>Message</th>
-                                            <th>Received</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($contact_messages)):
-                                            foreach ($contact_messages as $msg): ?>
-                                                <tr>
-                                                    <td>
-                                                        <div class="td-name"><?= htmlspecialchars($msg['name']) ?></div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="td-email"><?= htmlspecialchars($msg['email']) ?></div>
-                                                        <div style="font-size: 12px; color: var(--text-muted);"><?= htmlspecialchars($msg['phone']) ?></div>
-                                                    </td>
-                                                    <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                        <?= htmlspecialchars($msg['message']) ?>
-                                                    </td>
-                                                    <td><?= htmlspecialchars($msg['created_at']) ?></td>
-                                                </tr>
-                                            <?php endforeach;
-                                        else: ?>
-                                            <tr>
-                                                <td colspan="4">
-                                                    <div class="empty-state">
-                                                        <i class="fa-solid fa-envelope-open"></i>
-                                                        <p>No messages yet</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </main>
-        </div>
-
+                    
         <script>
             // ===== SIDEBAR & DROPDOWN =====
             function toggleSidebar() {
@@ -2332,51 +1673,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                 }
             });
 
-            // ===== VIEWS DOUGHNUT CHART =====
-            const viewsCtx = document.getElementById('viewsChart').getContext('2d');
-            new Chart(viewsCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: [<?php foreach ($pie_data as $pd) { echo "'" . addslashes($pd[0]) . "',"; } ?>],
-                    datasets: [{
-                        data: [<?php foreach ($pie_data as $pd) { echo $pd[1] . ','; } ?>],
-                        backgroundColor: [
-                            colors.primary, colors.success, colors.warning,
-                            colors.purple, colors.pink, colors.cyan,
-                            '#f97316', '#84cc16', '#14b8a6', '#6366f1'
-                        ],
-                        borderWidth: 0,
-                        hoverOffset: 10
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '65%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: colors.text,
-                                padding: 20,
-                                usePointStyle: true,
-                                pointStyle: 'circle',
-                                font: { size: 12 }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleColor: '#f1f5f9',
-                            bodyColor: '#94a3b8',
-                            borderColor: '#334155',
-                            borderWidth: 1,
-                            padding: 12,
-                            cornerRadius: 8
-                        }
-                    }
-                }
-            });
-
+           
             // ===== ANALYTICS CHART =====
             let analyticsChart = null;
             const analyticsCtx = document.getElementById('analyticsChart').getContext('2d');
@@ -2397,7 +1694,7 @@ while ($row = $revenueQuery->fetch_assoc()) {
                 location: {
                     labels: [<?php foreach ($location_data as $ld) { echo "'" . addslashes($ld[0]) . "',"; } ?>],
                     data: [<?php foreach ($location_data as $ld) { echo $ld[1] . ','; } ?>],
-                    label: 'Reservations by Location',
+                    label: 'Appointments by Location',
                     color: colors.warning
                 },
                 realtor: {

@@ -1,5 +1,5 @@
 <?php
-// ─── YOUR ORIGINAL BACKEND CODE ───
+
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self';");
 header("X-Content-Type-Options: nosniff"); header("X-Frame-Options: SAMEORIGIN"); header("Referrer-Policy: no-referrer-when-downgrade");
 session_start();
@@ -55,6 +55,7 @@ if(isset($_POST['confirm_reservation'])){
             <p>Good morning <strong>$client_name</strong>,</p>
             <p>Your appointment has been approved and the property <strong>$property</strong> is ready to view.</p>
             <p>Please look for <strong>$agent_name</strong> for your property appointment.</p>
+            <p>Please bring the requirements for a smooth transaction.</p>
             <p>Thank you for choosing <strong>Iloilo Top Property Homes</strong> for choosing your dream house!</p>
             <p>- ITPH ADMIN</p>
         ";
@@ -68,6 +69,46 @@ if(isset($_POST['confirm_reservation'])){
     header("Location: agent_dashboard.php");
     exit;
 }
+
+//done 
+// =====================
+// Agent marks transaction
+// =====================
+if(isset($_POST['agent_done'])){
+
+    $reservation_id = (int)$_POST['reservation_id'];
+    $action = $_POST['action'];
+
+    if($action == "spot_cash"){
+
+        $stmt = $conn->prepare("
+            UPDATE reservations
+            SET
+                status='Waiting Admin Approval',
+                payment_type='Spot Cash'
+            WHERE id=?
+        ");
+
+    }else{
+
+        $stmt = $conn->prepare("
+            UPDATE reservations
+            SET
+                status='Waiting Admin Approval',
+                payment_type='Installment'
+            WHERE id=?
+        ");
+
+    }
+
+    $stmt->bind_param("i",$reservation_id);
+    $stmt->execute();
+
+    header("Location: agent_dashboard.php");
+    exit;
+}
+
+ 
 // Fetch agent info
 $stmt = $conn->prepare("SELECT username, gmail FROM agents WHERE id = ?");
 $stmt->bind_param("i", $_SESSION['id']);
@@ -175,873 +216,7 @@ $conn->close();
 <title>Agent Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<style>
-/* ═══════════════════════════════════════════════════════════
-   REAL ESTATE AGENT DASHBOARD — DARK LUXURY THEME
-   Gold accent · Clean hierarchy · Smooth interactions
-   ═══════════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
-:root {
-    /* ── Colors ── */
-    --bg:              #0a0a0a;
-    --bg-elevated:     #111111;
-    --bg-card:         #161616;
-    --bg-hover:        #1c1c1c;
-    --bg-input:        #1e1e1e;
-    
-    --gold:            #c9a84c;
-    --gold-light:      #e0c878;
-    --gold-dim:        rgba(201,168,76,0.12);
-    --gold-glow:       rgba(201,168,76,0.06);
-    
-    --text:            #f0ece3;
-    --text-secondary:  #a39e96;
-    --text-muted:      #6b6560;
-    --text-dim:        #4a4540;
-    
-    --border:          #252525;
-    --border-hover:    #333333;
-    
-    --success:         #5aab7a;
-    --success-bg:      rgba(90,171,122,0.1);
-    --warning:         #c97a2a;
-    --warning-bg:      rgba(201,122,42,0.1);
-    --error:           #e05252;
-    --error-bg:        rgba(224,82,82,0.1);
-    
-    /* ── Layout ── */
-    --sidebar-w:       260px;
-    --topbar-h:        64px;
-    --radius:          14px;
-    --radius-sm:       10px;
-    --radius-xs:       6px;
-    
-    /* ── Shadows ── */
-    --shadow-sm:       0 2px 8px rgba(0,0,0,0.3);
-    --shadow:          0 8px 32px rgba(0,0,0,0.4);
-    --shadow-lg:       0 24px 64px rgba(0,0,0,0.5);
-    
-    /* ── Transitions ── */
-    --transition:      all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-*, *::before, *::after { 
-    box-sizing: border-box; 
-    margin: 0; 
-    padding: 0; 
-}
-
-html { scroll-behavior: smooth; }
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* ───────────────────────────────────────────
-   SCROLLBAR
-   ─────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-
-/* ───────────────────────────────────────────
-   SIDEBAR
-   ─────────────────────────────────────────── */
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(12px);
-    z-index: 98;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.sidebar-overlay.active { 
-    display: block; 
-    opacity: 1; 
-}
-
-.sidebar {
-    width: var(--sidebar-w);
-    background: var(--bg-elevated);
-    border-right: 1px solid var(--border);
-    position: fixed;
-    top: 0; left: 0;
-    height: 100vh;
-    overflow-y: auto;
-    z-index: 99;
-    display: flex;
-    flex-direction: column;
-    transform: translateX(-100%);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.sidebar.open { transform: translateX(0); }
-
-.sidebar-brand {
-    padding: 28px 24px 24px;
-    border-bottom: 1px solid var(--border);
-}
-.brand-wordmark {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.5px;
-}
-.brand-wordmark span { color: var(--gold); }
-.brand-sub {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    color: var(--text-dim);
-    margin-top: 6px;
-}
-
-.sidebar-nav { padding: 20px 0; flex: 1; }
-.nav-section {
-    padding: 16px 24px 8px;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 2.5px;
-    color: var(--text-dim);
-    font-weight: 600;
-}
-.nav-item { margin: 2px 12px; }
-.nav-item a {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 16px;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: var(--radius-xs);
-    transition: var(--transition);
-    position: relative;
-}
-.nav-item a::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 0;
-    background: var(--gold);
-    border-radius: 0 3px 3px 0;
-    transition: height 0.3s;
-}
-.nav-item a:hover {
-    color: var(--text);
-    background: var(--bg-hover);
-}
-.nav-item a:hover::before { height: 20px; }
-.nav-item.active a {
-    color: var(--gold);
-    background: var(--gold-dim);
-}
-.nav-item.active a::before { height: 28px; }
-.nav-icon { 
-    width: 20px; 
-    text-align: center; 
-    font-size: 16px;
-    opacity: 0.8;
-}
-
-.sidebar-footer {
-    padding: 16px 20px;
-    border-top: 1px solid var(--border);
-    margin: 0 12px 12px;
-    border-radius: var(--radius-xs);
-    background: var(--bg-hover);
-}
-.sidebar-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.sidebar-avatar {
-    width: 38px;
-    height: 38px;
-    background: var(--gold-dim);
-    border: 1.5px solid rgba(201,168,76,0.25);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Playfair Display', serif;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--gold);
-    flex-shrink: 0;
-}
-.sidebar-user-info { min-width: 0; }
-.sidebar-user-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.sidebar-user-role {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 2px;
-}
-
-/* ───────────────────────────────────────────
-   DASHBOARD LAYOUT
-   ─────────────────────────────────────────── */
-.dashboard { display: flex; min-height: 100vh; }
-.main-content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    margin-left: 0;
-    transition: margin-left 0.4s;
-}
-
-/* ───────────────────────────────────────────
-   TOPBAR
-   ─────────────────────────────────────────── */
-.topbar {
-    height: var(--topbar-h);
-    background: rgba(17,17,17,0.85);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-}
-
-.topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-}
-.hamburger {
-    background: none;
-    border: 1.5px solid var(--border);
-    padding: 9px;
-    border-radius: var(--radius-xs);
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    gap: 4.5px;
-    transition: var(--transition);
-}
-.hamburger:hover { border-color: var(--gold); }
-.hamburger span {
-    display: block;
-    width: 18px;
-    height: 1.5px;
-    background: var(--text-muted);
-    border-radius: 2px;
-    transition: all 0.3s;
-}
-.hamburger.active span:nth-child(1) { transform: translateY(6px) rotate(45deg); background: var(--gold); }
-.hamburger.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.hamburger.active span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); background: var(--gold); }
-
-.topbar-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-.topbar-time {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-    display: none;
-}
-.notification-btn {
-    position: relative;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-xs);
-    border: 1.5px solid var(--border);
-    background: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    transition: var(--transition);
-}
-.notification-btn:hover {
-    border-color: var(--gold);
-    color: var(--gold);
-    background: var(--gold-dim);
-}
-.notification-dot {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 8px;
-    height: 8px;
-    background: var(--error);
-    border-radius: 50%;
-    border: 2px solid var(--bg-elevated);
-    animation: pulse 2s infinite;
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* ───────────────────────────────────────────
-   PAGE CONTENT
-   ─────────────────────────────────────────── */
-.page-content { 
-    padding: 28px 24px; 
-    flex: 1; 
-}
-
-/* ───────────────────────────────────────────
-   FLASH MESSAGES
-   ─────────────────────────────────────────── */
-.flash {
-    padding: 14px 20px;
-    border-radius: var(--radius-sm);
-    font-size: 13.5px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    animation: slideDown 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid;
-    position: relative;
-    overflow: hidden;
-}
-.flash::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-}
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-12px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.flash-success {
-    background: var(--success-bg);
-    border-color: rgba(90,171,122,0.2);
-    color: #90d4aa;
-}
-.flash-success::before { background: var(--success); }
-.flash-error {
-    background: var(--error-bg);
-    border-color: rgba(224,82,82,0.2);
-    color: #e8a0a0;
-}
-.flash-error::before { background: var(--error); }
-.flash i { font-size: 16px; }
-
-/* ───────────────────────────────────────────
-   WELCOME HERO
-   ─────────────────────────────────────────── */
-.welcome-hero {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px;
-    margin-bottom: 28px;
-    position: relative;
-    overflow: hidden;
-}
-.welcome-hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0.7;
-}
-.welcome-hero::after {
-    content: '';
-    position: absolute;
-    top: -40%;
-    right: -5%;
-    width: 350px;
-    height: 350px;
-    background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
-    pointer-events: none;
-}
-.welcome-hero h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    position: relative;
-    z-index: 1;
-}
-.welcome-hero p {
-    color: var(--text-muted);
-    font-size: 15px;
-    position: relative;
-    z-index: 1;
-    max-width: 480px;
-}
-.welcome-meta {
-    display: flex;
-    gap: 24px;
-    margin-top: 20px;
-    font-size: 12px;
-    color: var(--text-dim);
-    position: relative;
-    z-index: 1;
-}
-.welcome-meta span {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.welcome-meta i { 
-    color: var(--gold); 
-    font-size: 12px; 
-}
-
-/* ───────────────────────────────────────────
-   STATS GRID
-   ─────────────────────────────────────────── */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-}
-.stat-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 24px;
-    position: relative;
-    overflow: hidden;
-    transition: var(--transition);
-}
-.stat-card:hover {
-    border-color: var(--border-hover);
-    transform: translateY(-3px);
-    box-shadow: var(--shadow);
-}
-.stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.stat-card:hover::after { opacity: 0.5; }
-.stat-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-    font-weight: 500;
-}
-.stat-number {
-    font-family: 'Playfair Display', serif;
-    font-size: 34px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1;
-}
-.stat-icon {
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    width: 44px;
-    height: 44px;
-    background: var(--gold-dim);
-    border-radius: var(--radius-xs);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--gold);
-    font-size: 18px;
-    transition: var(--transition);
-}
-.stat-card:hover .stat-icon {
-    transform: scale(1.1) rotate(-5deg);
-    background: rgba(201,168,76,0.2);
-}
-
-/* ───────────────────────────────────────────
-   SECTION HEADERS
-   ─────────────────────────────────────────── */
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-.section-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 18px;
-    font-weight: 600;
-}
-.section-action {
-    font-size: 13px;
-    color: var(--gold);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-    transition: var(--transition);
-}
-.section-action:hover { 
-    color: var(--gold-light); 
-    gap: 10px; 
-}
-
-/* ───────────────────────────────────────────
-   CARDS
-   ─────────────────────────────────────────── */
-.card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    margin-bottom: 24px;
-    transition: var(--transition);
-}
-.card:hover {
-    border-color: var(--border-hover);
-}
-.card-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-.card-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 17px;
-    font-weight: 600;
-}
-.card-body { padding: 0; }
-
-/* ───────────────────────────────────────────
-   CHART
-   ─────────────────────────────────────────── */
-.chart-wrap {
-    padding: 24px;
-    position: relative;
-    height: 320px;
-}
-
-/* ───────────────────────────────────────────
-   TABLES
-   ─────────────────────────────────────────── */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 13.5px;
-    min-width: 600px;
-}
-thead th {
-    padding: 14px 20px;
-    text-align: left;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elevated);
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-}
-tbody td {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-secondary);
-    vertical-align: middle;
-    transition: var(--transition);
-}
-tbody tr {
-    transition: background 0.2s;
-}
-tbody tr:hover {
-    background: var(--bg-hover);
-}
-tbody tr:hover td {
-    color: var(--text);
-}
-tbody tr:last-child td { border-bottom: none; }
-
-/* ───────────────────────────────────────────
-   BADGES
-   ─────────────────────────────────────────── */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-.badge-gold {
-    background: var(--gold-dim);
-    color: var(--gold);
-    border: 1px solid rgba(201,168,76,0.25);
-}
-.badge-success {
-    background: var(--success-bg);
-    color: var(--success);
-    border: 1px solid rgba(90,171,122,0.2);
-}
-.badge-warning {
-    background: var(--warning-bg);
-    color: var(--warning);
-    border: 1px solid rgba(201,122,42,0.2);
-}
-.badge-muted {
-    background: rgba(255,255,255,0.03);
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-}
-
-/* ───────────────────────────────────────────
-   BUTTONS
-   ─────────────────────────────────────────── */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 9px 18px;
-    border-radius: var(--radius-xs);
-    font-size: 12px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: var(--transition);
-    text-decoration: none;
-    white-space: nowrap;
-    font-family: inherit;
-    letter-spacing: 0.3px;
-}
-.btn-sm { padding: 7px 14px; font-size: 11px; }
-.btn-success {
-    background: var(--success);
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(90,171,122,0.2);
-}
-.btn-success:hover {
-    background: #4d9a6b;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(90,171,122,0.3);
-}
-.btn-ghost {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1.5px solid var(--border);
-}
-.btn-ghost:hover {
-    background: var(--bg-hover);
-    color: var(--text);
-    border-color: var(--text-dim);
-}
-
-/* ───────────────────────────────────────────
-   EMPTY STATE
-   ─────────────────────────────────────────── */
-.empty-state {
-    text-align: center;
-    padding: 56px 24px;
-    color: var(--text-dim);
-}
-.empty-state i {
-    font-size: 52px;
-    margin-bottom: 16px;
-    opacity: 0.25;
-    display: block;
-    color: var(--text-muted);
-}
-.empty-state p {
-    font-size: 15px;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-}
-.empty-state span {
-    font-size: 13px;
-    color: var(--text-dim);
-}
-
-/* ───────────────────────────────────────────
-   TWO COLUMN LAYOUT
-   ─────────────────────────────────────────── */
-.two-col {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
-}
-
-/* ───────────────────────────────────────────
-   CONFIRMATION MODAL
-   ─────────────────────────────────────────── */
-.modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    backdrop-filter: blur(12px);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.modal-overlay.active { 
-    display: flex; 
-    opacity: 1; 
-}
-.modal {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    width: 100%;
-    max-width: 440px;
-    box-shadow: var(--shadow-lg);
-    transform: scale(0.95) translateY(20px);
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.modal-overlay.active .modal {
-    transform: scale(1) translateY(0);
-}
-.modal-header {
-    padding: 28px 28px 0;
-}
-.modal-header h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-.modal-header p {
-    color: var(--text-muted);
-    font-size: 14px;
-}
-.modal-body {
-    padding: 24px 28px;
-}
-.modal-detail {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xs);
-    padding: 18px;
-    margin-bottom: 20px;
-}
-.modal-detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    font-size: 13.5px;
-    border-bottom: 1px solid var(--border);
-}
-.modal-detail-row:last-child { border-bottom: none; }
-.modal-detail-label { color: var(--text-muted); }
-.modal-detail-value { 
-    color: var(--text); 
-    font-weight: 500; 
-    text-align: right;
-    max-width: 60%;
-}
-.modal-footer {
-    padding: 0 28px 28px;
-    display: flex;
-    gap: 12px;
-}
-.modal-footer .btn { flex: 1; }
-
-/* ───────────────────────────────────────────
-   RESPONSIVE
-   ─────────────────────────────────────────── */
-@media (min-width: 640px) {
-    .stats-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-@media (min-width: 1024px) {
-    .sidebar { transform: translateX(0) !important; }
-    .sidebar-overlay { display: none !important; }
-    .main-content { margin-left: var(--sidebar-w); }
-    .hamburger { display: none; }
-    .topbar-time { display: block; }
-    .two-col { grid-template-columns: 2fr 1fr; }
-    .page-content { padding: 32px; }
-}
-
-@media (max-width: 480px) {
-    .page-content { padding: 16px; }
-    .welcome-hero { padding: 24px 20px; }
-    .welcome-hero h2 { font-size: 22px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .stat-card { padding: 18px; }
-    .stat-number { font-size: 26px; }
-    .stat-icon { width: 36px; height: 36px; font-size: 14px; }
-    .card-header { padding: 16px 18px; }
-    .chart-wrap { padding: 16px; height: 260px; }
-    table { font-size: 12px; min-width: 500px; }
-    thead th, tbody td { padding: 10px 14px; }
-    .modal-header { padding: 20px 20px 0; }
-    .modal-body, .modal-footer { padding-left: 20px; padding-right: 20px; }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-</style>
+<link rel="stylesheet" href="agent.css">
 </head>
 
 <body>
@@ -1070,7 +245,7 @@ tbody tr:last-child td { border-bottom: none; }
                 My Transactions
             </a>
         </div>
-       
+    
         
         <div class="nav-section">Account</div>
         <div class="nav-item">
@@ -1195,7 +370,7 @@ tbody tr:last-child td { border-bottom: none; }
                         <div class="card-title">Recent Reservations</div>
                     </div>
                     <div class="table-responsive">
-                        <table>
+                        <table> 
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -1229,30 +404,86 @@ tbody tr:last-child td { border-bottom: none; }
                                             <span class="badge badge-muted"><?= htmlspecialchars($row['status']) ?></span>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
-                                        <?php if($row['status'] === 'Done' && $row['agent_id'] == $_SESSION['id']): ?>
-                                            <span style="color:var(--text-muted);font-size:12px;font-style:italic;">Completed</span>
-                                        <?php elseif($row['agent_id'] == $_SESSION['id'] && $row['status'] !== 'Confirmed'): ?>
-                                            <button class="btn btn-success btn-sm" onclick="openConfirmModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['fullname'])) ?>', '<?= htmlspecialchars(addslashes($row['property'])) ?>')">
-                                                <i class="fas fa-check" style="font-size:10px;"></i> Confirm
-                                            </button>
-                                        <?php elseif($row['status'] === 'Confirmed' && $row['agent_id'] == $_SESSION['id']): ?>
-                                            <span style="color:var(--gold);font-size:12px;"><i class="fas fa-check-double" style="font-size:10px;"></i> Yours</span>
-                                        <?php elseif(empty($row['agent_id'])): ?>
-                                            <button class="btn btn-success btn-sm" onclick="openConfirmModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['fullname'])) ?>', '<?= htmlspecialchars(addslashes($row['property'])) ?>')">
-                                                <i class="fas fa-hand" style="font-size:10px;"></i> Claim
-                                            </button>
-                                        <?php else: ?>
-                                            <span style="color:var(--text-muted);font-size:12px;"><i class="fas fa-lock" style="font-size:10px;"></i> Taken</span>
-                                        <?php endif; ?>
-                                    </td>
+                                <td>
+
+<?php if($row['status'] == 'Done' && $row['agent_id'] == $_SESSION['id']): ?>
+
+    <span style="color:var(--text-muted);font-size:12px;font-style:italic;">
+        Completed
+    </span>
+
+<?php elseif($row['status'] == 'Waiting Admin Approval' && $row['agent_id'] == $_SESSION['id']): ?>
+
+    <button class="btn btn-warning btn-sm" disabled>
+        <i class="fas fa-hourglass-half"></i>
+        Waiting for Admin Approval
+    </button>
+
+<?php elseif($row['status'] == 'Confirmed' && $row['agent_id'] == $_SESSION['id']): ?>
+
+<form method="POST" style="display:flex;gap:8px;align-items:center;">
+
+    <input type="hidden"
+           name="reservation_id"
+           value="<?= $row['id'] ?>">
+
+    <select name="action" required>
+
+        <option value="">Done ▼</option>
+
+        <option value="spot_cash">
+            Spot Cash Completed
+        </option>
+
+        <option value="installment">
+            Installment Requirements Received
+        </option>
+
+    </select>
+
+    <button
+        type="submit"
+        name="agent_done"
+        class="btn btn-success btn-sm">
+
+        Submit
+
+    </button>
+
+</form>
+
+<?php elseif(empty($row['agent_id'])): ?>
+
+    <button
+        class="btn btn-success btn-sm"
+        onclick="openConfirmModal(
+            <?= $row['id'] ?>,
+            '<?= htmlspecialchars(addslashes($row['fullname'])) ?>',
+            '<?= htmlspecialchars(addslashes($row['property'])) ?>'
+        )">
+
+        <i class="fas fa-hand"></i>
+        Claim
+
+    </button>
+
+<?php else: ?>
+
+    <span style="color:var(--text-muted);font-size:12px;">
+        <i class="fas fa-lock"></i>
+        Taken
+    </span>
+
+<?php endif; ?>
+
+</td>
                                 </tr>
                             <?php endforeach; else: ?>
                                 <tr>
                                     <td colspan="7">
                                         <div class="empty-state">
                                             <i class="fas fa-inbox"></i>
-                                            <p>No reservations yet</p>
+                                            <p>No Appointments yet</p>
                                             <span>New client appointments will appear here</span>
                                         </div>
                                     </td>

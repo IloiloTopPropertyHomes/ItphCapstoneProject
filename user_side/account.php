@@ -95,6 +95,25 @@ foreach ($reservations as $r) {
 // Initials for avatar
 $initials = strtoupper(implode('', array_map(fn($w) => $w[0], explode(' ', trim($user['fullname'])))));
 $initials = substr($initials, 0, 2);
+// Handle Cancel Appointment
+if (isset($_POST['cancel_booking'])) {
+    $reservation_id = (int)$_POST['cancel_booking'];
+
+$stmt = $conn->prepare("
+UPDATE reservations
+SET status='Cancelled',
+    cancelled_at=NOW(),
+    cancelled_by='Client',
+    seen=0
+WHERE id=? AND status IN ('Pending','Confirmed')
+");
+    $stmt->bind_param("i", $reservation_id);
+    $stmt->execute();
+    $stmt->close();
+
+    header("Location: " . $_SERVER['PHP_SELF'] . "#reservations");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -875,6 +894,32 @@ body.dark-mode .footer a,
 body.dark-mode .footer-contact span {
     color: #d4d4d4;
 }
+.status-cancelled {
+    background: rgba(220,53,69,.12);
+    color: #c82333;
+}
+body.dark-mode .status-cancelled {
+    background: rgba(220,53,69,.18);
+    color: #ff8b8b;
+}
+.btn-cancel{
+    background:#dc3545;
+    color:#fff;
+    border:none;
+    padding:7px 16px;
+    border-radius:3px;
+    cursor:pointer;
+    font-size:.72rem;
+    font-weight:500;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-top:8px;
+    transition:.2s;
+}
+
+.btn-cancel:hover{
+    background:#b52a37;
+}
 </style>
 </head>
 <body>
@@ -964,6 +1009,9 @@ body.dark-mode .footer-contact span {
                     <span style="margin-left:auto;background:#e74c3c;color:#fff;border-radius:20px;padding:2px 8px;font-size:0.65rem;"><?= $unread_count ?></span>
                 <?php endif; ?>
             </a>
+            <a href="#mortgage" onclick="showTab('mortgage',this)">
+    <i class="bi bi-calculator"></i> Mortgage Calculator
+</a>
         </nav>
         <div class="sidebar-divider"></div>
         <a href="log_out.php" class="sidebar-logout">
@@ -1080,6 +1128,7 @@ body.dark-mode .footer-contact span {
         <div id="tab-reservations" style="display:none;">
             <div class="page-title">Appointments</div>
             <div class="page-subtitle">Track your property viewing bookings</div>
+            
 
             <div class="card-panel" style="padding: 0; overflow: hidden;">
                 <?php if (count($reservations) > 0): ?>
@@ -1098,13 +1147,14 @@ body.dark-mode .footer-contact span {
                     <tbody>
                     <?php foreach ($reservations as $r): ?>
                         <?php
-                            $statusClass = match($r['status']) {
-                                'Pending'   => 'status-pending',
-                                'Accepted'  => 'status-accepted',
-                                'Confirmed' => 'status-confirmed',
-                                'Done'      => 'status-done',
-                                default     => 'status-pending',
-                            };
+                           $statusClass = match($r['status']) {
+    'Pending'   => 'status-pending',
+    'Accepted'  => 'status-accepted',
+    'Confirmed' => 'status-confirmed',
+    'Done'      => 'status-done',
+    'Cancelled' => 'status-cancelled',
+    default     => 'status-pending',
+};
                         ?>
                         <tr>
                             <td data-label="Property"><strong><?= htmlspecialchars($r['property']) ?></strong></td>
@@ -1130,20 +1180,37 @@ body.dark-mode .footer-contact span {
                                 <!-- Agent / Done info -->
                                 <?php if ($r['status'] === 'Done'): ?>
                                     <div class="congrats-box mt-2">🎉 Congratulations! The house is yours!</div>
-                                <?php elseif (!empty($r['agent_id'])): ?>
+                                <?php elseif (!empty($r['agent_id']) && strtolower($r['status']) !== 'cancelled'): ?>
                                     <?php
-                                        $stmt = $conn->prepare("SELECT username FROM agents WHERE id=?");
-                                        $stmt->bind_param("i", $r['agent_id']);
-                                        $stmt->execute();
-                                        $agent_data = $stmt->get_result()->fetch_assoc();
-                                        $stmt->close();
-                                        $agent_name   = strtoupper($agent_data['username'] ?? '—');
-                                        $meeting_type = strtoupper($r['meeting_type'] ?? 'NOT SET');
+                                      $stmt = $conn->prepare("
+    SELECT username, phone
+    FROM agents
+    WHERE id = ?
+");
+$stmt->bind_param("i", $r['agent_id']);
+$stmt->execute();
+$agent_data = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+$agent_name   = $agent_data['username'] ?? 'Not Assigned';
+$agent_phone  = $agent_data['phone'] ?? 'Not Available';
+$meeting_type = strtoupper($r['meeting_type'] ?? 'NOT SET');
                                     ?>
-                                    <div class="agent-box mt-2">
-                                        Your agent: <strong><?= $agent_name ?></strong><br>
-                                        Meeting: <strong style="color:var(--gold-dark);"><?= $meeting_type ?></strong>
-                                    </div>
+                                 <div class="agent-box mt-2">
+    <strong><i class="bi bi-person-badge"></i> Agent</strong><br>
+    <?= htmlspecialchars($agent_name) ?><br><br>
+
+    <strong><i class="bi bi-telephone"></i> Contact Number</strong><br>
+    <a href="tel:<?= htmlspecialchars($agent_phone) ?>"
+       style="text-decoration:none;color:var(--gold-dark);font-weight:600;">
+        <?= htmlspecialchars($agent_phone) ?>
+    </a><br><br>
+
+    <strong><i class="bi bi-calendar-event"></i> Meeting Type</strong><br>
+    <span style="color:var(--gold-dark);">
+        <?= htmlspecialchars($meeting_type) ?>
+    </span>
+</div>
                                     <?php if ($r['status'] === 'Pending'): ?>
                                         <form method="POST">
                                             <input type="hidden" name="confirm_booking" value="<?= $r['id'] ?>">
@@ -1151,6 +1218,16 @@ body.dark-mode .footer-contact span {
                                         </form>
                                     <?php endif; ?>
                                 <?php endif; ?>
+                                <?php if (in_array($r['status'], ['Pending', 'Confirmed'])): ?>
+<form method="POST" style="display:inline;"
+      onsubmit="return confirm('Are you sure you want to cancel this appointment?');">
+    <input type="hidden" name="cancel_booking" value="<?= $r['id'] ?>">
+    <button type="submit" class="btn-cancel">
+        Cancel Appointment
+    </button>
+</form>
+
+<?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1165,17 +1242,188 @@ body.dark-mode .footer-contact span {
                     </div>
                 <?php endif; ?>
             </div>
+            
+        </div>
+        <div id="tab-mortgage" style="display:none;">
+
+    <div class="page-title">Mortgage Calculator</div>
+    <div class="page-subtitle">
+        Estimate your monthly housing loan payment
+    </div>
+
+    <div class="card-panel">
+
+        <form id="mortgageForm">
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <label class="form-label">Property Price (₱)</label>
+                    <input
+                        type="number"
+                        id="price"
+                        class="form-control"
+                        placeholder="2500000"
+                        required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Down Payment (₱)</label>
+                    <input
+                        type="number"
+                        id="down"
+                        class="form-control"
+                        placeholder="500000"
+                        required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Annual Interest Rate (%)</label>
+                    <input
+                        type="number"
+                        id="interest"
+                        value="6.5"
+                        step="0.01"
+                        class="form-control"
+                        required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Loan Term</label>
+                    <select id="years" class="form-select">
+                        <option value="5">5 Years</option>
+                        <option value="10">10 Years</option>
+                        <option value="15">15 Years</option>
+                        <option value="20" selected>20 Years</option>
+                        <option value="25">25 Years</option>
+                        <option value="30">30 Years</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <button
+                        type="button"
+                        class="btn-save"
+                        onclick="calculateMortgage()">
+                        Calculate
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+
+        <hr>
+
+        <div id="loanResult" style="display:none;">
+
+            <h5 style="color:var(--gold-dark);margin-bottom:20px;">
+                Loan Summary
+            </h5>
+
+            <div class="row">
+
+                <div class="col-md-3">
+                    <strong>Loan Amount</strong><br>
+                    <span id="loanAmount"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Monthly Payment</strong><br>
+                    <span id="monthlyPayment"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Total Interest</strong><br>
+                    <span id="totalInterest"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Total Payment</strong><br>
+                    <span id="totalPayment"></span>
+                </div>
+
+            </div>
+
         </div>
 
-    </main>
+    </div>
+
 </div>
+
+    </main>
+    
+</div>
+
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+
+    //mortgage
+    function formatPeso(value){
+    return "₱" + value.toLocaleString('en-PH',{
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+    });
+}
+
+function calculateMortgage(){
+
+    let price = parseFloat(document.getElementById("price").value);
+    let down = parseFloat(document.getElementById("down").value);
+    let rate = parseFloat(document.getElementById("interest").value);
+    let years = parseInt(document.getElementById("years").value);
+
+    if(isNaN(price)||isNaN(down)||price<=0){
+        alert("Please complete all fields.");
+        return;
+    }
+
+    let loan = price-down;
+
+    let monthlyRate = rate/100/12;
+    let payments = years*12;
+
+    let monthly =
+        loan *
+        monthlyRate *
+        Math.pow(1+monthlyRate,payments) /
+        (Math.pow(1+monthlyRate,payments)-1);
+
+    let total = monthly*payments;
+    let interest = total-loan;
+
+    document.getElementById("loanAmount").innerHTML =
+        formatPeso(loan);
+
+    document.getElementById("monthlyPayment").innerHTML =
+        formatPeso(monthly);
+
+    document.getElementById("totalInterest").innerHTML =
+        formatPeso(interest);
+
+    document.getElementById("totalPayment").innerHTML =
+        formatPeso(total);
+
+    document.getElementById("loanResult").style.display="block";
+
+}
 // Tab switcher
 function showTab(tabId, link) {
-    document.getElementById('tab-profile').style.display       = 'none';
-    document.getElementById('tab-reservations').style.display  = 'none';
+    document.querySelectorAll("[id^='tab-']").forEach(tab=>{
+    tab.style.display="none";
+});
+
+document.getElementById("tab-"+tabId).style.display="block";
+
+document.querySelectorAll(".sidebar-nav a").forEach(a=>{
+    a.classList.remove("active");
+});
+
+link.classList.add("active");
+
+history.replaceState(null,"","#"+tabId);
     document.getElementById('tab-' + tabId).style.display      = 'block';
     document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
     link.classList.add('active');

@@ -74,20 +74,36 @@ if ($stmt->fetch()) {
 }
 $stmt->close();
 
-// Handle agent actions
-if(isset($_POST['toggle_status'])){
-    $agent_id = (int)$_POST['agent_id'];
-    $current_status = $_POST['current_status'] === 'Active' ? 'Inactive' : 'Active';
+if (isset($_POST['toggle_status'])) {
 
-    $stmt = $conn->prepare("UPDATE agents SET status=? WHERE id=?");
-    $stmt->bind_param("si", $current_status, $agent_id);
+    $agent_id = (int)$_POST['agent_id'];
+
+    $stmt = $conn->prepare("SELECT status FROM agents WHERE id = ?");
+    $stmt->bind_param("i", $agent_id);
     $stmt->execute();
+    $result = $stmt->get_result();
+    $agent = $result->fetch_assoc();
     $stmt->close();
 
-    header("Location: ".$_SERVER['PHP_SELF']);
+    if ($agent) {
+
+        $newStatus = ($agent['status'] === 'Active') ? 'Inactive' : 'Active';
+
+        $stmt = $conn->prepare("UPDATE agents SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $newStatus, $agent_id);
+
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Agent status updated successfully.";
+        } else {
+            $_SESSION['error'] = "Unable to update agent status.";
+        }
+
+        $stmt->close();
+    }
+
+    header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-
 if(isset($_POST['delete_agent'])){
     $agent_id = (int)$_POST['agent_id'];
     $stmt = $conn->prepare("DELETE FROM agents WHERE id=?");

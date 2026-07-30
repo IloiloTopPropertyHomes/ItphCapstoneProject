@@ -1044,8 +1044,8 @@ body.dark-mode .body-house {
         <form class="hero-search" action="user_side/redirect.php" method="GET">
             <select name="property" required>
                 <option disabled selected>Explore a Property</option>
-                <option value="monticello.php">Monticello Homes</option>
-                <option value="amani.php">Amina Homes</option>
+                <option value="phrst.php">PHIRST Homes</option>
+               
             </select>
             <button type="submit"><i class="bi bi-arrow-right"></i></button>
         </form>

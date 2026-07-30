@@ -29,7 +29,7 @@ $stmt->close();
 
 // Fetch done deals
 $stmt = $conn->prepare("
-    SELECT r.id, r.fullname, r.email, r.phone, r.property, r.created_at, r.meeting_type, a.username AS agent_name
+    SELECT r.id, r.fullname, r.email, r.phone, r.property,r.payment_type,r.created_at, r.meeting_type, a.username AS agent_name
     FROM reservations r
     LEFT JOIN agents a ON r.agent_id = a.id
     WHERE r.status = 'Done'
@@ -720,10 +720,12 @@ tbody tr:last-child td {
                                 <th>Email</th>
                                 <th>Phone</th>
                                 <th>Property</th>
+                                <th>Payment Type</th>
                                 <th>Date</th>
                                 <th>Meeting Type</th>
                                 <th>Agent</th>
                                 <th>Status</th>
+                                
                             </tr>
                         </thead>
 
@@ -735,6 +737,7 @@ tbody tr:last-child td {
                                     <td><?= htmlspecialchars($row['email']) ?></td>
                                     <td><?= htmlspecialchars($row['phone']) ?></td>
                                     <td><?= htmlspecialchars($row['property']) ?></td>
+                                    <td><?= htmlspecialchars($row['payment_type']) ?></td>
                                     <td><?= htmlspecialchars(date('M d, Y', strtotime($row['created_at']))) ?></td>
                                     <td><?= htmlspecialchars($row['meeting_type'] ?? '-') ?></td>
                                     <td><?= htmlspecialchars($row['agent_name'] ?? 'Unassigned') ?></td>

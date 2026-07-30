@@ -25,6 +25,38 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION['csrf_token'];
+
+$conditions = [];
+$params = [];
+$types = "";
+
+$sql = "SELECT * FROM propertiies WHERE 1=1";
+
+if(!empty($_GET['budget'])){
+    $sql .= " AND price <= ?";
+    $types .= "d";
+    $params[] = $_GET['budget'];
+}
+
+if(!empty($_GET['bedrooms'])){
+    $sql .= " AND bedrooms = ?";
+    $types .= "i";
+    $params[] = $_GET['bedrooms'];
+}
+
+if(!empty($_GET['bathrooms'])){
+    $sql .= " AND bathrooms = ?";
+    $types .= "i";
+    $params[] = $_GET['bathrooms'];
+}
+
+if(!empty($_GET['sqm'])){
+    $sql .= " AND lot_area >= ?";
+    $types .= "d";
+    $params[] = $_GET['sqm'];
+}
+
+$sql .= " ORDER BY price ASC";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -896,6 +928,55 @@ body.dark-mode .footer-contact span {
         $result = $conn->query("SELECT * FROM propertiies ORDER BY id DESC");
         $total = $result ? $result->num_rows : 0;
         ?>
+        <div class="recommend-box">
+    <h3>🏡 Find Your Ideal Home</h3>
+
+    <form method="GET">
+        <div class="row">
+
+            <div class="col-md-3">
+                <label>Maximum Budget</label>
+                <input type="number" name="budget" class="form-control"
+                    placeholder="e.g. 3000000">
+            </div>
+
+            <div class="col-md-2">
+                <label>Bedrooms</label>
+                <select name="bedrooms" class="form-control">
+                    <option value="">Any</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label>Bathrooms</label>
+                <select name="bathrooms" class="form-control">
+                    <option value="">Any</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label>Minimum Area</label>
+                <input type="number" name="sqm"
+                    class="form-control"
+                    placeholder="sqm">
+            </div>
+
+            <div class="col-md-3">
+                <button class="btn btn-warning w-100 mt-4">
+                    Find My Home
+                </button>
+            </div>
+
+        </div>
+    </form>
+</div>
         <div class="content-header" data-aos="fade-up">
             <h2>All Listings</h2>
             <span class="result-count"><?= $total ?> propert<?= $total === 1 ? 'y' : 'ies' ?> found</span>

@@ -195,7 +195,7 @@ body {
     font-size: 0.68rem;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: var(--gold-light);
+    color: var(--dark);
     font-weight: 400;
     margin-bottom: 20px;
     display: flex;
@@ -768,6 +768,23 @@ body {
 .view-all-link:hover { gap: 12px; color: var(--gold-dark); }
 
 /* ---- CTA SECTION ---- */
+.section-eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 400;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.section-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 28px; height: 1px;
+    background: var(--gold);
+}
 .cta-section {
     padding: 100px 0;
     background: var(--cream);
@@ -777,8 +794,22 @@ body {
 }
 .cta-section::before {
     content: '';
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,168,76,0.06) 0%, transparent 70%);
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    border: 1px solid rgba(191,161,88,0.07);
+    pointer-events: none;
+}
+.cta-section::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 900px; height: 900px;
+    border-radius: 50%;
+    border: 1px solid rgba(191,161,88,0.04);
     pointer-events: none;
 }
 .cta-section h2 {
@@ -933,6 +964,10 @@ body.dark-mode {
     background: #121212;
     color: #e5e5e5;
 }
+body.dark-mode .navbar .nav-link:hover,
+body.dark-mode .navbar .nav-link.active-link {
+    color: var(--gold-light);
+}
 
 body.dark-mode .theme-switch { background: #2d3250; }
 body.dark-mode .theme-switch-slider { left: 38px; background: #1c1c1c; }
@@ -943,6 +978,11 @@ body.dark-mode .top-contact,
 body.dark-mode .navbar { background: rgba(18,18,18,0.92); border-bottom-color: rgba(255,255,255,0.06); }
 body.dark-mode .top-contact { color: #ddd; }
 body.dark-mode .navbar .nav-link { color: rgba(255,255,255,0.85); }
+
+body.dark-mode .hero { background: #0a0a14; }
+body.dark-mode .hero-bg-text { color: rgba(191,161,88,0.06); }
+body.dark-mode .hero-lines::before { border-color: rgba(191,161,88,0.12); }
+body.dark-mode .hero-lines::after { border-color: rgba(191,161,88,0.08); }
 
 body.dark-mode .filter-section { background: #121212; border-bottom-color: rgba(255,255,255,0.06); }
 body.dark-mode .filter-tab { color: rgba(255,255,255,0.45); }
@@ -1342,7 +1382,7 @@ body.dark-mode .chat-input-area input { background: #2a2a2a; border-color: rgba(
 <!-- CTA -->
 <section class="cta-section">
     <div class="container" style="position:relative;z-index:2;">
-        <div class="hero-eyebrow justify-content-center" style="color:var(--gold);" data-aos="fade-up">Ready to See More?</div>
+        <div class="section-eyebrow justify-content-center" data-aos="fade-up">Ready to See More?</div>
         <h2 data-aos="fade-up" data-aos-delay="80">Explore Our <em>Available</em><br>Properties Today.</h2>
         <p data-aos="fade-up" data-aos-delay="160">Loved what you watched? Take the next step and explore our listings in person — or reserve online today.</p>
         <div class="cta-btns" data-aos="fade-up" data-aos-delay="240">
@@ -1575,6 +1615,7 @@ videoModal.addEventListener('hidden.bs.modal', () => {
     const mv = document.getElementById('modalVideo');
     mv.pause(); mv.currentTime = 0;
 });
+
 </script>
 </body>
 <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>

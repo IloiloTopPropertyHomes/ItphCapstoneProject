@@ -72,16 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows === 1) {
 
             $agent = $result->fetch_assoc();
+// Check if account is inactive
+if ($agent['status'] !== 'Active') {
 
-            if ($agent['status'] === 'suspended') {
+    $error = "Your account has been deactivated by the administrator.";
 
-                $error = "Account suspended. Contact administrator.";
+} elseif ((int)$agent['login_attempts'] >= MAX_ATTEMPTS) {
 
-            } elseif ((int)$agent['login_attempts'] >= MAX_ATTEMPTS) {
+    $error = "Account locked. Contact administrator.";
 
-                $error = "Account locked. Contact administrator.";
-
-            } elseif (password_verify($password, $agent['password'])) {
+} elseif (password_verify($password, $agent['password'])) {
 
                 $_SESSION['id'] = $agent['id'];
                 $_SESSION['username'] = $agent['username'];

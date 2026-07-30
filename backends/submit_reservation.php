@@ -37,6 +37,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
     );
 
     if($stmt->execute()) {
+        if($stmt->execute()) {
+
+
         // ===================== DECREMENT AVAILABLE UNITS =====================
         $property_name = $property;
         if (strpos($property, ' - ') !== false) {
@@ -100,5 +103,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $stmt->close();
     $conn->close();
+}
 }
 ?>

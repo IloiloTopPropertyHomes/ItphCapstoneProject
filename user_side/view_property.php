@@ -1,5 +1,5 @@
 <?php
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.botpress.cloud https://files.bpcontent.cloud; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://cdn.botpress.cloud https://files.bpcontent.cloud wss://*.botpress.cloud https://*.botpress.cloud; frame-src https://cdn.botpress.cloud; frame-ancestors 'self'; base-uri 'self';");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.botpress.cloud https://files.bpcontent.cloud; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://cdn.botpress.cloud https://files.bpcontent.cloud wss://*.botpress.cloud https://*.botpress.cloud; frame-src 'self' https://www.google.com https://maps.google.com https://cdn.botpress.cloud; frame-ancestors 'self'; base-uri 'self';");
 header("X-Content-Type-Options: nosniff"); 
 header("X-Frame-Options: SAMEORIGIN"); 
 header("Referrer-Policy: no-referrer-when-downgrade");
@@ -62,6 +62,8 @@ if(isset($_SESSION['user_id'])){
     $userStmt->close();
     $profileIncomplete = empty($userData['fullname']) || empty($userData['email']) || empty($userData['phone']);
 }
+$latitude  = $prop['latitude'];
+$longitude = $prop['longitude'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1057,7 +1059,33 @@ body.dark-mode .image-viewer{
           <i class="bi bi-house-check-fill"></i>
           <span><?= $avail_units ?> Unit<?= $avail_units > 1 ? 's' : '' ?> Available</span>
         </div>
+        <div class="price-card-divider"></div>
 
+<div class="location-card">
+    <p class="spec-label">Property Location</p>
+
+    <iframe
+        src="https://www.google.com/maps?q=10.768065,122.483812&z=17&output=embed"
+        width="100%"
+        height="220"
+        style="border:0;border-radius:8px;"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+
+    <p style="margin-top:12px;font-size:.85rem;color:#666;">
+        <i class="bi bi-geo-alt-fill"></i>
+        San Jose, Iloilo City, Iloilo
+    </p>
+
+    <a href="https://www.google.com/maps/dir/?api=1&destination=10.768065,122.483812"
+       target="_blank"
+       class="btn-card-outline"
+       style="margin-top:12px;">
+        <i class="bi bi-map"></i>
+        Get Directions
+    </a>
+</div>
         <?php if(isset($_SESSION['user_id'])): ?>
           <?php if($profileIncomplete): ?>
             <a href="account.php" class="btn-vpreserve">Complete Account First</a>

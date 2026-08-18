@@ -52,6 +52,62 @@ $message = "";
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
+// ==================== BASIC DOS PROTECTION ====================
+// Limits requests from the same IP at the PHP/application level.
+// This is NOT a replacement for Cloudflare/WAF/network-level DDoS protection.
+
+$rateLimitDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'itph_rate_limits';
+
+if (!is_dir($rateLimitDir)) {
+    @mkdir($rateLimitDir, 0700, true);
+}
+
+// Use a hash instead of storing the raw IP in the filename.
+$ipKey = hash('sha256', $ip);
+$rateFile = $rateLimitDir . DIRECTORY_SEPARATOR . $ipKey . '.json';
+
+$now = time();
+
+// Maximum requests allowed from one IP during the window.
+$maxRequests = 60;
+$windowSeconds = 60;
+
+$rateData = [
+    'start' => $now,
+    'count' => 0
+];
+
+if (is_file($rateFile)) {
+    $saved = json_decode(@file_get_contents($rateFile), true);
+
+    if (is_array($saved)
+        && isset($saved['start'], $saved['count'])
+        && ($now - (int)$saved['start']) < $windowSeconds
+    ) {
+        $rateData = $saved;
+    } else {
+        $rateData = [
+            'start' => $now,
+            'count' => 0
+        ];
+    }
+}
+
+$rateData['count']++;
+
+@file_put_contents(
+    $rateFile,
+    json_encode($rateData),
+    LOCK_EX
+);
+
+if ($rateData['count'] > $maxRequests) {
+    http_response_code(429);
+    header('Retry-After: 60');
+    exit('Too many requests. Please try again later.');
+}
+
+
 // ==================== CSRF ====================
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

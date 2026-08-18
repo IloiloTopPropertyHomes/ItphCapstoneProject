@@ -170,22 +170,30 @@ LIMIT 8
     }
 
     //approved done
-if(isset($_POST['approve_done'])){
+// =====================================================
+// ADMIN CLOSES DEAL AFTER AGENT FORWARDS IT
+// =====================================================
+// ADMIN CLOSES DEAL AFTER AGENT FORWARDS IT
+// =====================================================
+if (isset($_POST['approve_done'])) {
 
     $reservation_id = (int)$_POST['reservation_id'];
 
     // Get reservation details
     $stmt = $conn->prepare("
-        SELECT
+        SELECT 
             fullname,
             email,
             property,
-            payment_type
+            payment_type,
+            agent_id
         FROM reservations
         WHERE id = ?
+          AND status = 'Waiting Admin Approval'
+        LIMIT 1
     ");
 
-    $stmt->bind_param("i",$reservation_id);
+    $stmt->bind_param("i", $reservation_id);
     $stmt->execute();
 
     $result = $stmt->get_result();
@@ -193,79 +201,114 @@ if(isset($_POST['approve_done'])){
 
     $stmt->close();
 
-    // Update reservation
+    // Check if reservation exists
+    if (!$reservation) {
+
+        $_SESSION['error'] = "This transaction is not waiting for admin approval.";
+
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    // -------------------------------------------------
+    // CLOSE THE DEAL
+    // -------------------------------------------------
     $stmt = $conn->prepare("
         UPDATE reservations
-        SET status='Done'
-        WHERE id=?
+        SET status = 'Done'
+        WHERE id = ?
+          AND status = 'Waiting Admin Approval'
     ");
 
-    $stmt->bind_param("i",$reservation_id);
+    $stmt->bind_param("i", $reservation_id);
     $stmt->execute();
     $stmt->close();
 
-    // Email
+    // -------------------------------------------------
+    // SEND CUSTOMER EMAIL
+    // -------------------------------------------------
     $subject = "Your Property Transaction is Complete";
 
-    if($reservation['payment_type']=="Spot Cash"){
+    if ($reservation['payment_type'] === "Cash" ||
+        $reservation['payment_type'] === "Spot Cash") {
+
+        $payment_text = "Cash";
 
         $body = "
-        Dear {$reservation['fullname']},<br><br>
+            <p>Dear <strong>" .
+            htmlspecialchars($reservation['fullname']) .
+            "</strong>,</p>
 
-        Congratulations!
+            <p>
+                Congratulations! Your purchase of
+                <strong>" .
+                htmlspecialchars($reservation['property']) .
+                "</strong>
+                has been successfully completed through
+                <strong>Cash Payment</strong>.
+            </p>
 
-        Your purchase of
-        <strong>{$reservation['property']}</strong>
-        has been completed successfully through
-        <strong>Spot Cash</strong>.
+            <p>
+                Your transaction has been officially closed
+                by the administration.
+            </p>
 
-        <br><br>
+            <p>
+                Thank you for choosing
+                <strong>Iloilo Top Property Homes</strong>.
+            </p>
 
-        Thank you for choosing
-        <strong>Iloilo Top Property Homes</strong>.
-
-        <br><br>
-
-        Regards,<br>
-        ITPH Administration
+            <p>
+                Regards,<br>
+                ITPH Administration
+            </p>
         ";
 
-    }else{
+    } else {
+
+        $payment_text = "Installment";
 
         $body = "
-        Dear {$reservation['fullname']},<br><br>
+            <p>Dear <strong>" .
+            htmlspecialchars($reservation['fullname']) .
+            "</strong>,</p>
 
-        Congratulations!
+            <p>
+                Congratulations! Your installment transaction for
+                <strong>" .
+                htmlspecialchars($reservation['property']) .
+                "</strong>
+                has been successfully completed.
+            </p>
 
-        Your installment transaction for
-        <strong>{$reservation['property']}</strong>
-        has been successfully completed.
+            <p>
+                Your transaction has been officially closed
+                by the administration.
+            </p>
 
-        <br><br>
+            <p>
+                Thank you for choosing
+                <strong>Iloilo Top Property Homes</strong>.
+            </p>
 
-        Thank you for choosing
-        <strong>Iloilo Top Property Homes</strong>.
-
-        <br><br>
-
-        Regards,<br>
-        ITPH Administration
+            <p>
+                Regards,<br>
+                ITPH Administration
+            </p>
         ";
-
     }
 
     send_gmail_notification(
-
         $reservation['email'],
         $reservation['fullname'],
         $subject,
         $body
-
     );
 
-    $_SESSION['success']="Reservation completed successfully.";
+    $_SESSION['success'] =
+        "Deal closed successfully. Payment: " . $payment_text;
 
-    header("Location: ".$_SERVER['PHP_SELF']);
+    header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
     // Auth check
@@ -541,16 +584,47 @@ while ($row = $revenueQuery->fetch_assoc()) {
         $agent_values[] = (int)$row['total_done'];
     }
 
-    if (isset($_POST['confirm_booking'])) {
-        $id = (int)$_POST['reservation_id'];
-        $stmt = $conn->prepare("UPDATE reservations SET status='Confirmed', notification_sent=0 WHERE id=?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+    // ================= ASSIGN AGENT =================
+if (isset($_POST['assign_agent'])) {
+
+    $reservation_id = (int)$_POST['reservation_id'];
+    $agent_id = (int)$_POST['agent_id'];
+
+    // Make sure the selected agent exists
+    $check = $conn->prepare("SELECT id FROM agents WHERE id = ?");
+    $check->bind_param("i", $agent_id);
+    $check->execute();
+    $check_result = $check->get_result();
+
+    if ($check_result->num_rows === 0) {
+        $check->close();
+
+        $_SESSION['error'] = "Selected agent does not exist.";
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
 
+    $check->close();
+
+    // Assign agent to reservation
+    $stmt = $conn->prepare("
+        UPDATE reservations
+        SET 
+            agent_id = ?,
+            status = 'Confirmed',
+            notification_sent = 0
+        WHERE id = ?
+    ");
+
+    $stmt->bind_param("ii", $agent_id, $reservation_id);
+    $stmt->execute();
+    $stmt->close();
+
+    $_SESSION['success'] = "Agent assigned successfully.";
+
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit();
+}
     if (isset($_POST['done_deal'])) {
         $reservation_id = (int)$_POST['reservation_id'];
         $agent_id = (int)$_SESSION['id'];
@@ -936,6 +1010,13 @@ while ($row = $revenueQuery->fetch_assoc()) {
         }
         return '';
     }
+
+    // ================= AVAILABLE AGENTS =================
+$agents_query = $conn->query("
+    SELECT id, username
+    FROM agents
+    ORDER BY username ASC
+");
     ?>
 
     <!DOCTYPE html>
@@ -1492,16 +1573,19 @@ while ($row = $revenueQuery->fetch_assoc()) {
                                     <tbody id="reservationTable">
                                         <?php if ($res_query && $res_query->num_rows > 0):
                                             while ($row = $res_query->fetch_assoc()):
-                                                $status_class = match ($row['status']) {
-                                                    'Confirmed' => 'badge-confirmed',
-                                                    'Done' => 'badge-done',
-                                                    default => 'badge-pending'
-                                                };
-                                                $status_color = match ($row['status']) {
-                                                    'Confirmed' => 'blue',
-                                                    'Done' => 'green',
-                                                    default => 'amber'
-                                                };
+                                               $status_class = match ($row['status']) {
+    'Confirmed' => 'badge-confirmed',
+    'Waiting Admin Approval' => 'badge-waiting',
+    'Done' => 'badge-done',
+    default => 'badge-pending'
+};
+
+$status_color = match ($row['status']) {
+    'Confirmed' => 'blue',
+    'Waiting Admin Approval' => 'purple',
+    'Done' => 'green',
+    default => 'amber'
+};
                                         ?>
                                                 <tr>
                                                     <td>
@@ -1516,51 +1600,159 @@ while ($row = $revenueQuery->fetch_assoc()) {
                                                             <?= htmlspecialchars($row['status']) ?>
                                                         </span>
                                                     </td>
-                                                    <td>
-                                                        <?php if ($row['status'] === 'Pending'): ?>
-                                                            <form method="POST" style="display: inline;">
-                                                                <input type="hidden" name="reservation_id" value="<?= $row['id'] ?>">
-                                                                <button type="submit" name="confirm_booking" class="btn btn-primary btn-sm">
-                                                                    <i class="fa-solid fa-check"></i> Confirm
-                                                                </button>
-                                                            </form>
-                                                    
+                                                 <td class="actions-cell">
 
-<?php elseif ($row['status']=="Waiting Admin Approval"): ?>
+    <?php if ($row['status'] === 'Pending'): ?>
 
-<form method="POST">
+        <!-- ASSIGN AGENT -->
+        <form method="POST" class="assign-agent-form">
 
-<input
-type="hidden"
-name="reservation_id"
-value="<?= $row['id'] ?>">
+            <input
+                type="hidden"
+                name="reservation_id"
+                value="<?= (int)$row['id'] ?>"
+            >
 
-<button
-class="btn btn-success btn-sm"
-name="approve_done">
+            <select
+                name="agent_id"
+                class="agent-select"
+                required
+            >
+                <option value="">Select Agent</option>
 
-<i class="fa-solid fa-check"></i>
+                <?php
+                $agents_query = $conn->query("
+                    SELECT id, username
+                    FROM agents
+                    ORDER BY username ASC
+                ");
 
-Done
+                while ($agent = $agents_query->fetch_assoc()):
+                ?>
 
-</button>
+                    <option value="<?= (int)$agent['id'] ?>">
+                        <?= htmlspecialchars($agent['username']) ?>
+                    </option>
 
-</form>
+                <?php endwhile; ?>
+
+            </select>
+
+            <button
+                type="submit"
+                name="assign_agent"
+                class="btn btn-primary btn-sm assign-btn"
+            >
+                <i class="fa-solid fa-user-plus"></i>
+                Assign
+            </button>
+
+        </form>
 
 
+    <?php elseif ($row['status'] === 'Confirmed'): ?>
+
+        <!-- AGENT HAS BEEN ASSIGNED -->
+
+        <?php
+        $assigned_agent_name = 'Agent';
+
+        if (!empty($row['agent_id'])) {
+
+            $agent_stmt = $conn->prepare("
+                SELECT username
+                FROM agents
+                WHERE id = ?
+                LIMIT 1
+            ");
+
+            $agent_stmt->bind_param("i", $row['agent_id']);
+            $agent_stmt->execute();
+            $agent_result = $agent_stmt->get_result();
+
+            if ($agent_result->num_rows > 0) {
+                $agent_data = $agent_result->fetch_assoc();
+                $assigned_agent_name = $agent_data['username'];
+            }
+
+            $agent_stmt->close();
+        }
+        ?>
+
+        <div class="assigned-info">
+            <span class="assigned-label">
+                <i class="fa-solid fa-user-check"></i>
+                Assigned
+            </span>
+
+            <small>
+                <?= htmlspecialchars($assigned_agent_name) ?>
+            </small>
+        </div>
 
 
+    <?php elseif ($row['status'] === 'Waiting Admin Approval'): ?>
 
-<?php elseif ($row['status'] === 'Done'): ?>
+        <!-- AGENT FORWARDED COMPLETED DEAL -->
 
-<span class="badge badge-done">
+        <div class="approval-action">
 
-Completed
+            <div class="approval-info">
 
-</span>
+                <span class="approval-badge">
+                    <i class="fa-solid fa-clock"></i>
+                    Waiting for Admin
+                </span>
 
-<?php endif; ?>
-                                                    </td>
+                <?php if (!empty($row['payment_type'])): ?>
+
+                    <small>
+                        Payment:
+                        <strong>
+                            <?= htmlspecialchars($row['payment_type']) ?>
+                        </strong>
+                    </small>
+
+                <?php endif; ?>
+
+            </div>
+
+            <!-- ADMIN CLOSE DEAL -->
+            <form method="POST">
+
+                <input
+                    type="hidden"
+                    name="reservation_id"
+                    value="<?= (int)$row['id'] ?>"
+                >
+
+                <button
+                    type="submit"
+                    name="approve_done"
+                    class="btn btn-success btn-sm"
+                    onclick="return confirm('Are you sure you want to close this deal?');"
+                >
+                    <i class="fa-solid fa-check-double"></i>
+                    Close Deal
+                </button>
+
+            </form>
+
+        </div>
+
+
+    <?php elseif ($row['status'] === 'Done'): ?>
+
+        <!-- COMPLETED -->
+
+        <span class="assigned-label completed">
+            <i class="fa-solid fa-check"></i>
+            Completed
+        </span>
+
+    <?php endif; ?>
+
+</td>
                                                 </tr>
                                             <?php endwhile;
                                         else: ?>

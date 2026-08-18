@@ -70,6 +70,32 @@ if(isset($_POST['confirm_reservation'])){
     exit;
 }
 
+// =====================
+// Agent grabs assigned appointment
+// =====================
+if (isset($_POST['agent_grab'])) {
+
+    $reservation_id = (int)$_POST['reservation_id'];
+
+    // Only allow the assigned agent to grab the appointment
+    $stmt = $conn->prepare("
+        UPDATE reservations
+        SET status = 'Grabbed'
+        WHERE id = ?
+        AND agent_id = ?
+        AND status = 'Confirmed'
+    ");
+
+    $stmt->bind_param("ii", $reservation_id, $_SESSION['id']);
+    $stmt->execute();
+    $stmt->close();
+
+    $_SESSION['message'] = "Appointment successfully grabbed!";
+    
+    header("Location: agent_dashboard.php");
+    exit;
+}
+
 //done 
 // =====================
 // Agent marks transaction
@@ -200,13 +226,28 @@ for($m=1; $m<=12; $m++){
 /* ================= DATA ================= */
 
 // Recent reservations
+// ================= RECENT RESERVATIONS =================
+// Only show appointments assigned to the logged-in agent
 $reservations = [];
-$res_query = $conn->query("SELECT * FROM reservations ORDER BY id DESC LIMIT 5");
-while($row = $res_query->fetch_assoc()){
+
+$stmt = $conn->prepare("
+    SELECT *
+    FROM reservations
+    WHERE agent_id = ?
+    ORDER BY id DESC
+    LIMIT 5
+");
+
+$stmt->bind_param("i", $agent_id);
+$stmt->execute();
+
+$res_query = $stmt->get_result();
+
+while ($row = $res_query->fetch_assoc()) {
     $reservations[] = $row;
 }
 
-$conn->close();
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -393,88 +434,123 @@ $conn->close();
                                     <td><?= htmlspecialchars($row['phone']) ?></td>
                                     <td><?= htmlspecialchars($row['property']) ?></td>
                                     <td><?= date('M d, Y', strtotime($row['created_at'])) ?></td>
-                                    <td>
-                                        <?php if($row['status'] === 'Done' && $row['agent_id'] == $_SESSION['id']): ?>
-                                            <span class="badge badge-success"><i class="fas fa-check" style="font-size:9px;"></i> Done by you</span>
-                                        <?php elseif($row['status'] === 'Confirmed' && $row['agent_id'] == $_SESSION['id']): ?>
-                                            <span class="badge badge-gold"><i class="fas fa-check-double" style="font-size:9px;"></i> Confirmed</span>
-                                        <?php elseif($row['status'] === 'Pending'): ?>
-                                            <span class="badge badge-warning"><i class="fas fa-clock" style="font-size:9px;"></i> Pending</span>
-                                        <?php else: ?>
-                                            <span class="badge badge-muted"><?= htmlspecialchars($row['status']) ?></span>
-                                        <?php endif; ?>
-                                    </td>
-                                <td>
+                                   <td>
 
-<?php if($row['status'] == 'Done' && $row['agent_id'] == $_SESSION['id']): ?>
+    <?php if ($row['status'] === 'Done'): ?>
 
-    <span style="color:var(--text-muted);font-size:12px;font-style:italic;">
-        Completed
+        <span class="badge badge-success">
+            <i class="fas fa-check" style="font-size:9px;"></i>
+            Done
+        </span>
+
+    <?php elseif ($row['status'] === 'Waiting Admin Approval'): ?>
+
+        <span class="badge badge-warning">
+            <i class="fas fa-hourglass-half" style="font-size:9px;"></i>
+            Waiting Admin
+        </span>
+<?php elseif ($row['status'] === 'Confirmed'): ?>
+
+    <span class="badge badge-gold">
+        <i class="fas fa-user-check" style="font-size:9px;"></i>
+        Assigned to You
     </span>
 
-<?php elseif($row['status'] == 'Waiting Admin Approval' && $row['agent_id'] == $_SESSION['id']): ?>
+<?php elseif ($row['status'] === 'Grabbed'): ?>
 
-    <button class="btn btn-warning btn-sm" disabled>
-        <i class="fas fa-hourglass-half"></i>
-        Waiting for Admin Approval
-    </button>
-
-<?php elseif($row['status'] == 'Confirmed' && $row['agent_id'] == $_SESSION['id']): ?>
-
-<form method="POST" style="display:flex;gap:8px;align-items:center;">
-
-    <input type="hidden"
-           name="reservation_id"
-           value="<?= $row['id'] ?>">
-
-    <select name="action" required>
-
-        <option value="">Done ▼</option>
-
-        <option value="spot_cash">
-            Spot Cash Completed
-        </option>
-
-        <option value="installment">
-            Installment Requirements Received
-        </option>
-
-    </select>
-
-    <button
-        type="submit"
-        name="agent_done"
-        class="btn btn-success btn-sm">
-
-        Submit
-
-    </button>
-
-</form>
-
-<?php elseif(empty($row['agent_id'])): ?>
-
-    <button
-        class="btn btn-success btn-sm"
-        onclick="openConfirmModal(
-            <?= $row['id'] ?>,
-            '<?= htmlspecialchars(addslashes($row['fullname'])) ?>',
-            '<?= htmlspecialchars(addslashes($row['property'])) ?>'
-        )">
-
-        <i class="fas fa-hand"></i>
-        Claim
-
-    </button>
-
-<?php else: ?>
-
-    <span style="color:var(--text-muted);font-size:12px;">
-        <i class="fas fa-lock"></i>
-        Taken
+    <span class="badge badge-gold">
+        <i class="fas fa-hand-pointer" style="font-size:9px;"></i>
+        Grabbed
     </span>
 
-<?php endif; ?>
+    <?php else: ?>
+
+        <span class="badge badge-muted">
+            <?= htmlspecialchars($row['status']) ?>
+        </span>
+
+    <?php endif; ?>
+
+</td>
+                             <td class="action-cell">
+
+    <?php if ($row['agent_id'] == $_SESSION['id']): ?>
+
+        <?php if ($row['status'] === 'Done'): ?>
+
+            <span class="assigned-status completed">
+                <i class="fas fa-circle-check"></i>
+                Completed
+            </span>
+
+        <?php elseif ($row['status'] === 'Waiting Admin Approval'): ?>
+
+            <span class="assigned-status waiting">
+                <i class="fas fa-hourglass-half"></i>
+                Waiting for Admin
+            </span>
+
+        <?php elseif ($row['status'] === 'Confirmed'): ?>
+
+    <!-- ASSIGNED BUT NOT YET GRABBED -->
+    <form method="POST" class="appointment-action-form">
+
+        <input 
+            type="hidden"
+            name="reservation_id"
+            value="<?= $row['id'] ?>"
+        >
+
+        <button
+            type="submit"
+            name="agent_grab"
+            class="btn btn-success btn-sm"
+        >
+            <i class="fas fa-hand-pointer"></i>
+            Grab
+        </button>
+
+    </form>
+
+<?php elseif ($row['status'] === 'Grabbed'): ?>
+
+    <!-- AFTER GRABBING, SHOW PAYMENT DETAILS -->
+    <form method="POST" class="appointment-action-form">
+
+        <input 
+            type="hidden"
+            name="reservation_id"
+            value="<?= $row['id'] ?>"
+        >
+
+        <select name="action" class="appointment-select" required>
+
+            <option value="">Payment Details</option>
+
+            <option value="spot_cash">
+                Spot Cash Completed
+            </option>
+
+            <option value="installment">
+                Installment Requirements Received
+            </option>
+
+        </select>
+
+        <button
+            type="submit"
+            name="agent_done"
+            class="btn btn-success btn-sm"
+        >
+            <i class="fas fa-paper-plane"></i>
+            Submit
+        </button>
+
+    </form>
+
+        <?php endif; ?>
+
+    <?php endif; ?>
 
 </td>
                                 </tr>

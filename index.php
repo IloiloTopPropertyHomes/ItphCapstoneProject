@@ -83,6 +83,19 @@ if ($result) {
     z-index: 99999;
     transition: opacity 0.6s ease;
 }
+:root {
+    --gold: #bfa158;
+    --gold-dark: #8c7a45;
+    --gold-light: #d4b97a;
+    --cream: #f6f6f0;
+    --green: #0D2B1F;
+    --lightgreen: #0D2B1F;
+    --dark: #1a1a2e;
+    --text: #3a3a50;
+    --text-muted: #7a7a8a;
+    --white: #ffffff;
+}
+
 body.loading > *:not(#loader) { visibility: hidden; }
 .house { position: relative; width: 100px; height: 90px; margin-bottom: 24px; animation: bounce 1.6s infinite ease-in-out; }
 .roof { position: absolute; width: 0; height: 0; border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 52px solid var(--gold); top: -42px; }
@@ -329,7 +342,7 @@ body.loading > *:not(#loader) { visibility: hidden; }
    SERVICES SECTION
 ===================== */
 .services-section {
-    background: var(--dark);
+    background: var(--green);
     padding: 90px 0;
 }
 .services-section .section-label { color: var(--gold-light); }
@@ -347,7 +360,7 @@ body.loading > *:not(#loader) { visibility: hidden; }
     overflow: hidden;
 }
 .service-card {
-    background: var(--dark);
+    background: var(--lightgreen);
     padding: 44px 36px;
     transition: background 0.35s ease;
     position: relative;
@@ -587,9 +600,9 @@ body.loading > *:not(#loader) { visibility: hidden; }
 /* =====================
    FOOTER
 ===================== */
-.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer { background-color: var(--green); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
 .footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-.footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3rem; font-weight: 700; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
+.footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3.2rem; font-weight: 700; color: var(--gold); text-align: center; margin: 0 auto; display: block; }
 .footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
 .footer a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.88rem; }
 .footer a:hover { color: #fff; text-decoration: underline; }
@@ -829,7 +842,7 @@ body.dark-mode .video-label .vl-title {
 
 /* Services Section */
 body.dark-mode .services-section {
-    background: #0d0d0d;
+    background: #0A0A14;
 }
 
 body.dark-mode .service-cards {
@@ -838,7 +851,7 @@ body.dark-mode .service-cards {
 }
 
 body.dark-mode .service-card {
-    background: #0d0d0d;
+    background: #0A0A14;
 }
 
 body.dark-mode .service-card:hover {
@@ -924,7 +937,7 @@ body.dark-mode .chat-input-area input {
 
 /* Footer */
 body.dark-mode .footer {
-    background: #171717;
+    background: #0A0A14;
 }
 
 body.dark-mode .footer-about-text,
@@ -1001,7 +1014,7 @@ body.dark-mode .body-house {
       <div class="dropdown" style="display:flex; align-items:center; gap:10px;">
         <a href="user_side/account.php" title="My Account" style="
             width:38px; height:38px; border-radius:50%;
-            background:var(--gold); color:#fff;
+            background:var(--green); color:#fff;
             font-size:0.75rem; font-weight:600; letter-spacing:0.05em;
             display:flex; align-items:center; justify-content:center;
             border:2px solid var(--gold-light); text-decoration:none;
@@ -1212,25 +1225,25 @@ body.dark-mode .body-house {
             </div>
             <div class="col-md-2 mb-4">
                 <h6>Quick Links</h6>
-                <ul class="list-unstyled" style="line-height:2;">
+                <ul class="list-unstyled" style="line-height:2.1;">
                     <li><a href="index.php">Home</a></li>
                     <li><a href="user_side/about_us.php">About Us</a></li>
-                    <li><a href="user_side/news.php">Latest News</a></li>
-                    <li><a href="vlogs.php">Vlogs</a></li>
+                    <li><a href="user_side/vlogs.php">Media</a></li>
+                    <li><a href="user_side/news.php">News</a></li>
                 </ul>
             </div>
             <div class="col-md-2 mb-4">
                 <h6>Properties</h6>
-                <ul class="list-unstyled" style="line-height:2;">
-                    <li><a href="user_side/monticello.php">Monticello</a></li>
-                    <li><a href="user_side/amani.php">Amani Homes</a></li>
+                <ul class="list-unstyled" style="line-height:2.1;">
+                    <li><a href="user_side/phrst.php">PHIRST</a></li>
                 </ul>
             </div>
             <div class="col-md-4 mb-4">
                 <h6>Tools</h6>
-                <ul class="list-unstyled" style="line-height:2;">
+                <ul class="list-unstyled" style="line-height:2.1;">
                     <li><a href="user_side/contact_us.php">Contact Us</a></li>
-                    <li><a href="user_side/reservation.php">Reserve Now</a></li>
+                    <li><a href="user_side/reservation.php">Book Now</a></li>
+                    <li><a href="user_side/account.php">Account</a></li>
                 </ul>
             </div>
         </div>

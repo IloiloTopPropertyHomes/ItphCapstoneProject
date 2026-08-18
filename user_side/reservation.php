@@ -28,12 +28,71 @@ $csrf_token = $_SESSION['csrf_token'];
 
 // Fetch logged-in user info
 $user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT fullname, email, gender, location, status, phone, secondary_email FROM customers WHERE id = ?");
+$user_id = $_SESSION['user_id'];
+
+/*
+|--------------------------------------------------------------------------
+| CHECK FOR UNASSIGNED EXISTING APPOINTMENT
+|--------------------------------------------------------------------------
+| If the client already has an appointment that has NOT yet been
+| assigned to an agent, prevent them from creating another appointment.
+|
+| agent_id IS NULL = Admin has not assigned an agent yet.
+| Done / Cancelled appointments are excluded.
+|--------------------------------------------------------------------------
+*/
+
+$pendingAssignment = false;
+
+$checkStmt = $conn->prepare("
+    SELECT id, property, date, time, status
+    FROM reservations
+    WHERE email = (
+        SELECT email
+        FROM customers
+        WHERE id = ?
+    )
+    AND agent_id IS NULL
+    AND status NOT IN ('Done', 'Cancelled')
+    ORDER BY created_at DESC
+    LIMIT 1
+");
+
+$checkStmt->bind_param("i", $user_id);
+$checkStmt->execute();
+
+$checkResult = $checkStmt->get_result();
+
+if ($checkResult->num_rows > 0) {
+    $pendingAssignment = true;
+    $pendingReservation = $checkResult->fetch_assoc();
+}
+
+$checkStmt->close();
+
+
+$stmt = $conn->prepare("
+    SELECT fullname, email, gender, location, status, phone, secondary_email
+    FROM customers
+    WHERE id = ?
+");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 $stmt->close();
+
+/*
+|--------------------------------------------------------------------------
+| BLOCK NEW APPOINTMENT IF AN AGENT HAS NOT BEEN ASSIGNED
+|--------------------------------------------------------------------------
+*/
+
+if ($pendingAssignment) {
+    $blockedProperty = $pendingReservation['property'] ?? 'your selected property';
+    $blockedDate = $pendingReservation['date'] ?? '';
+    $blockedTime = $pendingReservation['time'] ?? '';
+}
 
 // Get property info from GET
 $house    = $_GET['house']         ?? '';
@@ -837,11 +896,139 @@ body.dark-mode .navbar.scrolled {
 
             <!-- Right: Form Card -->
             <div class="col-lg-8" data-aos="fade-left" data-aos-delay="80">
-                <div class="form-card">
-                    <h2 class="form-card-title">Appointment Form</h2>
-                    <p class="form-card-sub">All pre-filled fields are pulled from your account. You may update them in your profile.</p>
+              <div class="form-card">
 
-                    <form action="/recapstone/backends/submit_reservation.php" method="POST" id="rsv-form">
+    <?php if ($pendingAssignment): ?>
+
+        <!-- BLOCKED APPOINTMENT NOTICE -->
+        <div class="alert alert-warning border-0 shadow-sm" style="
+            background: rgba(255,193,7,0.10);
+            border-left: 4px solid #ffc107 !important;
+            padding: 24px;
+        ">
+
+            <div class="d-flex align-items-start">
+
+                <div class="me-3">
+                    <i class="bi bi-hourglass-split"
+                       style="font-size: 2.2rem; color:#d39e00;"></i>
+                </div>
+
+                <div>
+                    <h4 style="
+                        font-family:'Cormorant Garamond', serif;
+                        font-size:1.6rem;
+                        color:#8a6d00;
+                        margin-bottom:8px;
+                    ">
+                        Appointment Still Waiting for Agent Assignment
+                    </h4>
+
+                    <p style="
+                        font-size:0.88rem;
+                        line-height:1.7;
+                        color:#6c5a00;
+                        margin-bottom:12px;
+                    ">
+                        You already have an appointment waiting for an agent
+                        to be assigned by our administrator.
+                    </p>
+
+                    <p style="
+                        font-size:0.84rem;
+                        line-height:1.7;
+                        color:#6c5a00;
+                        margin-bottom:15px;
+                    ">
+                        Please wait until an agent has been assigned to your
+                        appointment before creating another appointment.
+                    </p>
+
+                    <div style="
+                        background:rgba(255,255,255,0.7);
+                        border-radius:4px;
+                        padding:14px 16px;
+                        margin-bottom:16px;
+                    ">
+
+                        <div style="
+                            font-size:0.68rem;
+                            text-transform:uppercase;
+                            letter-spacing:0.1em;
+                            color:#8a6d00;
+                            margin-bottom:4px;
+                        ">
+                            Current Appointment
+                        </div>
+
+                        <div style="
+                            font-size:0.9rem;
+                            font-weight:500;
+                            color:#4a3d00;
+                        ">
+                            <?= htmlspecialchars($blockedProperty) ?>
+                        </div>
+
+                        <?php if ($blockedDate): ?>
+                            <div style="
+                                font-size:0.8rem;
+                                color:#6c5a00;
+                                margin-top:5px;
+                            ">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                <?= htmlspecialchars($blockedDate) ?>
+
+                                <?php if ($blockedTime): ?>
+                                    &nbsp; • &nbsp;
+                                    <i class="bi bi-clock me-1"></i>
+                                    <?= htmlspecialchars($blockedTime) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
+
+                    <a href="account.php#reservations"
+                       class="btn btn-outline-warning"
+                       style="
+                           font-size:0.75rem;
+                           letter-spacing:0.08em;
+                           text-transform:uppercase;
+                       ">
+                        <i class="bi bi-calendar-check me-1"></i>
+                        View My Appointment
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    <?php else: ?>
+
+        <!-- ORIGINAL APPOINTMENT FORM -->
+        <h2 class="form-card-title">Appointment Form</h2>
+
+        <p class="form-card-sub">
+            All pre-filled fields are pulled from your account.
+            You may update them in your profile.
+        </p>
+
+        <form action="/recapstone/backends/submit_reservation.php"
+              method="POST"
+              id="rsv-form">
+
+            <input type="hidden"
+                   name="redirect"
+                   value="/recapstone/user_side/account.php#reservations">
+
+            <input type="hidden"
+                   name="csrf_token"
+                   value="<?= $csrf_token ?>">
+
+            <!-- KEEP EVERYTHING INSIDE YOUR ORIGINAL FORM HERE -->
+
                         <input type="hidden" name="redirect" value="/recapstone/user_side/account.php#reservations">
                         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
 
@@ -935,10 +1122,13 @@ body.dark-mode .navbar.scrolled {
         data-bs-target="#noRefundModal">
     Confirm Appointment <i class="bi bi-check2-circle"></i>
 </button>
-                        </div>
-                    </form>
-                </div>
+                                         </div>
+                </form>
+
+                <?php endif; ?>
+
             </div>
+        </div>
 
         </div>
     </div>

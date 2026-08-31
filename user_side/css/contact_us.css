@@ -1,0 +1,87 @@
+/* HERO */
+
+.contact-hero{
+height:60vh;
+background-image:url('../photo/bg_2.jpg');
+background-size:cover;
+background-position:center;
+display:flex;
+align-items:center;
+justify-content:center;
+position:relative;
+color:white;
+}
+
+.contact-hero::before{
+content:'';
+position:absolute;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.45);
+}
+
+.contact-hero h1{
+position:relative;
+font-size:3rem;
+font-weight:600;
+}
+
+/* Contact Section */
+
+.contact-section{
+padding:80px;
+background-color: #f6f6f0;
+margin-top: 50px;
+}
+
+.contact-card{
+background:#f6f6f0;
+padding:25px;
+border-radius:8px;
+text-align:center;
+box-shadow:0 4px 10px rgba(0,0,0,0.08);
+height:100%;
+}
+.contact-card .h5{
+    color: #bfa158;
+}
+
+.contact-card i{
+font-size:2rem;
+color:#bfa158;
+margin-bottom:10px;
+}
+
+/* Contact Form */
+
+.contact-form{
+background:#f6f6f0;
+padding:40px;
+border-radius:8px;
+box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+.form-control{
+margin-bottom:15px;
+padding:12px;
+background: #f6f6f0;
+}
+
+.btn-gold{
+ background: #bfa158; border: none; color: #fff; padding:8px 20px; border-radius:4px; font-weight:400; 
+}
+
+.btn-gold:hover{
+    background: inherit;             /* inherits whatever navbar background currently is */
+    backdrop-filter: inherit;        /* inherits blur from navbar */
+    -webkit-backdrop-filter: inherit;
+    border: 1px solid #bfa158;      /* gold border */
+    color: #bfa158;                  /* brand color text */
+    text-decoration: none;
+    transition: background 0.3s ease, color 0.3s ease, border 0.3s ease, transform 0.3s ease;
+
+}
+
+

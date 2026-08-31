@@ -1,0 +1,1461 @@
+<?php
+// =================== SECURITY HEADERS ===================
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.botpress.cloud https://files.bpcontent.cloud; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://cdn.botpress.cloud https://files.bpcontent.cloud wss://*.botpress.cloud https://*.botpress.cloud; frame-src https://cdn.botpress.cloud; frame-ancestors 'self'; base-uri 'self';");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: SAMEORIGIN");
+header("Referrer-Policy: no-referrer-when-downgrade");
+
+session_start([
+    'cookie_httponly' => true,
+    'cookie_secure' => isset($_SERVER['HTTPS']),
+    'cookie_samesite' => 'Strict'
+]);
+
+require_once __DIR__ . '/../backends/config.php';
+$conn = get_db_connection();
+$currentPage = basename($_SERVER['PHP_SELF']);
+
+$allPropertiesQuery = $conn->query("SELECT DISTINCT property_page FROM propertiies WHERE property_page != 'phrst' ORDER BY property_page ASC");
+$allProperties = [];
+while ($row = $allPropertiesQuery->fetch_assoc()) {
+    $allProperties[] = $row['property_page'];
+}
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
+
+/* ================= SEARCH / FILTER / SORT ================= */
+$search     = trim($_GET['search'] ?? '');
+$typeFilter = $_GET['type'] ?? '';
+if (!in_array($typeFilter, $allProperties, true)) {
+    $typeFilter = '';
+}
+$sort = $_GET['sort'] ?? 'newest';
+$allowedSorts = ['newest', 'price_low', 'price_high'];
+if (!in_array($sort, $allowedSorts, true)) {
+    $sort = 'newest';
+}
+
+$where = [];
+$params = [];
+$types = '';
+
+if ($search !== '') {
+    $where[] = "(title LIKE ? OR location LIKE ?)";
+    $likeVal = '%' . $search . '%';
+    $params[] = $likeVal;
+    $params[] = $likeVal;
+    $types .= 'ss';
+}
+if ($typeFilter !== '') {
+    $where[] = "property_page = ?";
+    $params[] = $typeFilter;
+    $types .= 's';
+}
+
+$whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+$orderSql = 'ORDER BY id DESC';
+if ($sort === 'price_low')  $orderSql = 'ORDER BY price ASC';
+if ($sort === 'price_high') $orderSql = 'ORDER BY price DESC';
+
+$sql = "SELECT * FROM propertiies $whereSql $orderSql";
+
+if ($params) {
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    $result = $conn->query($sql);
+}
+$total = $result ? $result->num_rows : 0;
+
+$typeLabels = [
+    'monticello' => 'Monticello',
+    'amani'      => 'Amani House',
+];
+function propLabel($page, $typeLabels) {
+    return $typeLabels[$page] ?? ucfirst($page);
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Properties — ITPH</title>
+<script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
+<script src="https://files.bpcontent.cloud/2026/05/13/12/20260513123611-N0BSRPKC.js" defer></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+<link rel="stylesheet" href="css/common.css">
+
+<style>
+:root {
+    --gold: #bfa158;
+    --gold-dark: #8c7a45;
+    --gold-light: #185c3d;
+    --cream: #f6f6f0;
+    --dark: #185c3d;
+    --text: #3a3a50;
+    --text-muted: #7a7a8a;
+    --white: #ffffff;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    color: var(--text);
+    background: var(--white);
+}
+
+/* =====================
+   TOP CONTACT
+===================== */
+.top-contact {
+    color: #555;
+    font-size: 0.78rem;
+    padding: 6px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1050;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid rgba(191,161,88,0.15);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.top-contact.hidden { transform: translateY(-100%); opacity: 0; }
+.top-contact .social-icons a { margin-left: 14px; color: #555; transition: color 0.2s; }
+.top-contact .social-icons a:hover { color: var(--gold); }
+
+/* =====================
+   NAVBAR
+===================== */
+.navbar {
+    position: fixed;
+    top: 30px;
+    width: 100%;
+    z-index: 1040;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(191,161,88,0.12);
+    transition: top 0.4s ease, box-shadow 0.4s ease;
+}
+.navbar.scrolled { top: 0; box-shadow: 0 2px 20px rgba(0,0,0,0.06); }
+.navbar .navbar-brand {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+}
+.navbar .nav-link {
+    margin-left: 20px;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+}
+.navbar .nav-link:hover,
+.navbar .nav-link.active-link { color: var(--gold); }
+.navbar .btn-reserve {
+    background: var(--gold);
+    border: 1px solid transparent;
+    color: #fff;
+    padding: 8px 22px;
+    border-radius: 2px;
+    font-size: 0.78rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+.navbar .btn-reserve:hover { background: transparent; border-color: var(--gold); color: var(--gold); }
+.dropdown-menu { background: #fafaf7; border: 1px solid rgba(191,161,88,0.15); border-radius: 4px; }
+
+/* =====================
+   PAGE HERO BANNER
+===================== */
+.page-banner {
+    background: var(--dark);
+    padding: 130px 0 60px;
+    position: relative;
+    overflow: hidden;
+}
+.page-banner::before {
+    content: 'PROPERTIES';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9rem;
+    font-weight: 700;
+    color: rgba(191,161,88,0.05);
+    white-space: nowrap;
+    pointer-events: none;
+    letter-spacing: 0.1em;
+}
+.page-banner .section-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    font-weight: 400;
+    margin-bottom: 14px;
+    display: block;
+}
+.page-banner h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 18px;
+}
+.page-banner h1 em { font-style: italic; color: var(--gold-light); }
+.page-banner p {
+    font-size: 0.93rem;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.8;
+    max-width: 520px;
+}
+
+
+/* =====================
+   HERO SEARCH
+===================== */
+.hero-search {
+    display: flex;
+    align-items: stretch;
+    width: min(100%, 620px);
+    margin-top: 28px;
+    background: rgba(255,255,255,0.98);
+    border: 1px solid rgba(191,161,88,0.35);
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.16);
+}
+.hero-search input {
+    flex: 1;
+    min-width: 0;
+    height: 54px;
+    border: 0;
+    outline: 0;
+    padding: 0 18px;
+    background: transparent;
+    color: var(--dark);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 400;
+}
+.hero-search input::placeholder { color: #8a8a94; }
+.hero-search input:focus { box-shadow: inset 0 0 0 1px rgba(191,161,88,0.25); }
+.hero-search button {
+    width: 58px;
+    border: 0;
+    background: var(--gold);
+    color: #fff;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background .25s ease;
+}
+.hero-search button:hover { background: var(--gold-dark); }
+
+/* =====================
+   SIDEBAR DROPDOWN
+===================== */
+.nav-dropdown {
+    position: relative;
+    width: 100%;
+}
+.nav-dropdown-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 28px;
+    border: 0;
+    border-left: 2px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    text-align: left;
+    font-family: 'Montserrat', sans-serif;
+    font-size: inherit;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all .25s ease;
+}
+.nav-dropdown-toggle:hover {
+    color: var(--gold);
+    background: rgba(191,161,88,0.04);
+}
+.nav-dropdown-toggle > i:first-child { font-size: .85rem; }
+.nav-dropdown-toggle span { flex: 1; }
+.dropdown-arrow {
+    font-size: .7rem !important;
+    transition: transform .25s ease;
+}
+.nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+.nav-dropdown.open .nav-dropdown-toggle {
+    color: var(--gold-light);
+    background: rgba(191,161,88,0.06);
+    border-left-color: var(--gold);
+}
+.nav-dropdown-menu {
+    display: none;
+    padding: 4px 0 8px;
+    background: rgba(0,0,0,0.12);
+}
+.nav-dropdown.open .nav-dropdown-menu { display: block; }
+.nav-dropdown-menu a {
+    display: block;
+    padding: 9px 28px 9px 58px;
+    color: #999;
+    text-decoration: none;
+    font-size: .76rem;
+    font-weight: 400;
+    letter-spacing: .12em;
+    transition: all .2s ease;
+}
+.nav-dropdown-menu a:hover,
+.nav-dropdown-menu a.active {
+    color: var(--gold-light);
+    background: rgba(191,161,88,0.08);
+}
+
+/* =====================
+   CONTENT TOOLBAR
+===================== */
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    margin: -12px 0 24px;
+    min-height: 38px;
+}
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border: 1px solid rgba(191,161,88,0.22);
+    border-radius: 2px;
+    background: rgba(191,161,88,0.06);
+    color: var(--gold-dark);
+    font-size: .68rem;
+    letter-spacing: .04em;
+}
+.filter-chip a {
+    color: var(--text-muted);
+    text-decoration: none;
+    line-height: 1;
+}
+.filter-chip a:hover { color: #c0392b; }
+
+.sort-select {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-shrink: 0;
+}
+.sort-select label {
+    color: var(--text-muted);
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.sort-select select {
+    min-width: 160px;
+    height: 38px;
+    padding: 0 34px 0 11px;
+    border: 1px solid rgba(191,161,88,0.25);
+    border-radius: 2px;
+    background: var(--white);
+    color: var(--text);
+    font-family: 'Montserrat', sans-serif;
+    font-size: .72rem;
+    outline: none;
+    cursor: pointer;
+}
+.sort-select select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(191,161,88,0.10);
+}
+.btn-clear {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 9px 18px;
+    border: 1px solid var(--gold);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--gold-dark);
+    text-decoration: none;
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    transition: all .25s ease;
+}
+.btn-clear:hover {
+    background: var(--gold);
+    color: #fff;
+}
+
+/* Existing sidebar active item */
+.sidebar a.active { color: var(--gold-light); }
+
+/* Dark mode */
+body.dark-mode .hero-search {
+    background: #1c1c1c;
+    border-color: rgba(191,161,88,0.28);
+}
+body.dark-mode .hero-search input { color: #fff; }
+body.dark-mode .hero-search input::placeholder { color: #888; }
+body.dark-mode .nav-dropdown-menu { background: rgba(0,0,0,0.22); }
+body.dark-mode .filter-chip {
+    background: rgba(191,161,88,0.08);
+    color: var(--gold-light);
+}
+body.dark-mode .sort-select select {
+    background: #1c1c1c;
+    color: #eee;
+    border-color: rgba(255,255,255,0.12);
+}
+body.dark-mode .btn-clear { color: var(--gold-light); }
+body.dark-mode .btn-clear:hover { color: #fff; }
+
+@media (max-width: 992px) {
+    .nav-dropdown-toggle {
+        padding: 8px 16px;
+        border-left: none;
+        border-bottom: 2px solid transparent;
+    }
+    .nav-dropdown.open .nav-dropdown-toggle {
+        border-left: none;
+        border-bottom-color: var(--gold);
+    }
+    .nav-dropdown-menu a { padding: 9px 16px 9px 38px; }
+    .toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+        margin-top: 0;
+    }
+    .sort-select { width: 100%; justify-content: space-between; }
+    .sort-select select { flex: 1; }
+}
+@media (max-width: 576px) {
+    .hero-search { width: 100%; }
+    .hero-search input { height: 50px; font-size: .78rem; }
+    .hero-search button { width: 52px; }
+}
+
+/* =====================
+   LAYOUT
+===================== */
+.properties-layout {
+    display: flex;
+    gap: 0;
+    align-items: flex-start;
+    background: var(--cream);
+    min-height: 70vh;
+}
+
+/* =====================
+   SIDEBAR NAV
+===================== */
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--dark);
+    border-right: 1px solid rgba(191,161,88,0.12);
+    padding: 40px 0;
+    position: sticky;
+    top: 90px;
+    height: calc(100vh - 90px);
+    overflow-y: auto;
+}
+.sidebar-label {
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 400;
+    padding: 0 28px;
+    margin-bottom: 16px;
+    display: block;
+}
+.sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 28px;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    border-left: 2px solid transparent;
+    transition: all 0.25s;
+    font-weight: 300;
+}
+.sidebar a:hover { color: var(--gold); background: rgba(191,161,88,0.04); }
+.sidebar a.active {
+    color: var(--gold-dark);
+    font-weight: 500;
+    border-left-color: var(--gold);
+    background: rgba(191,161,88,0.06);
+}
+.sidebar a i { font-size: 0.85rem; }
+
+/* =====================
+   MAIN CONTENT
+===================== */
+.content-area {
+    flex: 1;
+    padding: 48px 40px 60px;
+    min-width: 0;
+}
+
+.content-header {
+    margin-bottom: 36px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(191,161,88,0.12);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.content-header h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 1.6rem;
+    color: var(--dark);
+}
+.content-header .result-count {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+}
+
+/* =====================
+   PROPERTY GRID
+===================== */
+.prop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.prop-card {
+    background: var(--white);
+    border-radius: 2px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+    border: 1px solid rgba(191,161,88,0.1);
+}
+.prop-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.09);
+    color: inherit;
+}
+
+.prop-img-wrap {
+    position: relative;
+    height: 210px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.prop-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+.prop-card:hover .prop-img-wrap img { transform: scale(1.06); }
+
+.prop-tag {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: var(--gold);
+    color: #fff;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 1px;
+    font-weight: 400;
+}
+
+.prop-body {
+    padding: 22px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+.prop-body h6 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--dark);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.prop-type {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+    font-weight: 400;
+}
+.prop-location {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+.prop-location i { color: var(--gold); font-size: 0.78rem; }
+.prop-desc {
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+    margin-bottom: 18px;
+}
+.prop-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid rgba(191,161,88,0.12);
+}
+.prop-specs {
+    display: flex;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.prop-specs span { display: flex; align-items: center; gap: 4px; }
+.prop-specs i { color: var(--gold); font-size: 0.76rem; }
+.prop-price {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--gold-dark);
+    white-space: nowrap;
+}
+.prop-units-badge {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    background: rgba(26,26,46,0.78);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 1px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Empty state */
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 70px 20px;
+    color: var(--text-muted);
+}
+.empty-state i { font-size: 2.5rem; color: rgba(191,161,88,0.3); margin-bottom: 14px; display: block; }
+.empty-state p { font-size: 0.95rem; }
+
+/* =====================
+   CHAT
+===================== */
+#chat-bubble {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 54px;
+    height: 54px;
+    background: var(--gold);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(191,161,88,0.35);
+    z-index: 2000;
+    transition: transform 0.3s ease, box-shadow 0.3s;
+}
+#chat-bubble:hover { transform: scale(1.08); box-shadow: 0 10px 28px rgba(191,161,88,0.45); }
+#chat-window {
+    position: fixed;
+    bottom: 94px;
+    right: 28px;
+    width: 340px;
+    height: 480px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 2000;
+    border: 1px solid rgba(191,161,88,0.15);
+}
+.chat-header { background: var(--gold); color: #fff; padding: 14px 18px; font-weight: 500; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+#chat-messages { flex: 1; padding: 16px; overflow-y: auto; background: #fdfdfb; display: flex; flex-direction: column; gap: 10px; }
+.msg { padding: 10px 14px; border-radius: 10px; max-width: 82%; font-size: 0.87rem; line-height: 1.5; }
+.msg-user { align-self: flex-end; background: var(--gold); color: #fff; border-bottom-right-radius: 2px; }
+.msg-bot { align-self: flex-start; background: #f1f0ec; color: #333; border-bottom-left-radius: 2px; }
+.chat-input-area { padding: 12px 14px; border-top: 1px solid #eee; display: flex; background: #fff; }
+.chat-input-area input { flex: 1; border: 1px solid #ddd; padding: 9px 12px; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 0.85rem; outline: none; }
+.chat-input-area button { background: none; border: none; color: var(--gold); font-size: 1.3rem; margin-left: 8px; cursor: pointer; }
+
+/* =====================
+   FOOTER
+===================== */
+.footer { background-color: var(--dark); color: #fff; width: 100%; padding-top: 50px; padding-bottom: 24px; }
+.footer .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.footer-logo-text { font-family: 'Montserrat', sans-serif; font-size: 3.5rem; font-weight: 600; color: var(--gold); text-align: center; margin: 0 auto; display: block; text-shadow: 1px 1px 2px #fff; }
+.footer h6 { font-weight: 500; margin-bottom: 14px; color: #fdd07b; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.footer a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.88rem; }
+.footer a:hover { color: #fff; text-decoration: underline; }
+.footer-divider { width: 40px; height: 1px; background-color: rgba(255,255,255,0.5); border: none; margin: 12px auto 18px; }
+.footer-about-text { font-size: 0.87rem; line-height: 1.7; color: rgba(255,255,255,0.8); }
+.footer-contact span { font-size: 0.85rem; display: inline-block; margin: 0 6px; }
+.footer-social a { color: #fff; margin: 0 7px; font-size: 1rem; display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255,255,255,0.4); transition: all 0.3s ease; }
+.footer-social a:hover { background: #fff; color: var(--gold); transform: scale(1.15); }
+.back-to-top { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.8rem; letter-spacing: 0.1em; transition: color 0.2s; }
+.back-to-top:hover { color: #fff; }
+
+/* =====================
+   RESPONSIVE
+===================== */
+@media (max-width: 992px) {
+    .properties-layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid rgba(191,161,88,0.12); padding: 20px 0; display: flex; flex-wrap: wrap; gap: 0; }
+    .sidebar-label { width: 100%; padding: 0 20px; margin-bottom: 8px; }
+    .sidebar a { padding: 8px 16px; border-left: none; border-bottom: 2px solid transparent; }
+    .sidebar a.active { border-left: none; border-bottom-color: var(--gold); }
+    .content-area { padding: 28px 20px 40px; }
+    .prop-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+}
+@media (max-width: 576px) {
+    .prop-grid { grid-template-columns: 1fr; }
+    .page-banner { padding: 120px 20px 50px; }
+    .page-banner::before { display: none; }
+}
+
+/* =====================
+   DARK MODE SWITCH
+===================== */
+.theme-switch {
+    width: 68px;
+    height: 34px;
+    background: #d8d8d8;
+    border-radius: 50px;
+    position: relative;
+    cursor: pointer;
+    transition: all .35s ease;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    margin-left: 14px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.theme-switch-slider {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 4px;
+    transition: all .35s ease;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+
+.theme-switch i {
+    position: absolute;
+    font-size: .78rem;
+}
+
+.sun-icon {
+    color: #f5b301;
+    opacity: 1;
+}
+
+.moon-icon {
+    color: #fff;
+    opacity: 0;
+}
+
+/* =====================
+   DARK MODE STYLES
+===================== */
+
+/* Switch active state */
+body.dark-mode .theme-switch {
+    background: #2d3250;
+}
+
+body.dark-mode .theme-switch-slider {
+    left: 38px;
+    background: #1c1c1c;
+}
+
+body.dark-mode .sun-icon {
+    opacity: 0;
+}
+
+body.dark-mode .moon-icon {
+    opacity: 1;
+}
+
+/* Body base */
+body.dark-mode {
+    background: #121212;
+    color: #e5e5e5;
+}
+/* Navbar now transitions background and border */
+.navbar {
+    transition: top 1s ease, box-shadow 1s ease, 
+                background 1s ease, border-color 1s ease;
+}
+
+/* Top contact bar now transitions background, border, and color */
+.top-contact {
+    transition: transform 1s ease, opacity 1s ease,
+                background 1s ease, border-color 1s ease, color 1s ease;
+}
+body {
+    transition: transform 1s ease, opacity 1s ease,
+                background 1s ease, border-color 1s ease, color 1s ease;
+}
+
+body * {
+    transition: transform 1s ease, opacity 1s ease,
+                background 1s ease, border-color 1s ease, color 1s ease;
+}
+
+/* Top Contact */
+body.dark-mode .top-contact {
+    background: rgba(18,18,18,0.9);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: #ddd;
+}
+
+body.dark-mode .top-contact .social-icons a {
+    color: #ddd;
+}
+
+/* Navbar */
+body.dark-mode .navbar {
+    background: rgba(20,20,20,0.9);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+body.dark-mode .navbar .nav-link {
+    color: #f1f1f1;
+}
+
+body.dark-mode .navbar .nav-link:hover,
+body.dark-mode .navbar .nav-link.active-link {
+    color: var(--gold-light);
+}
+
+body.dark-mode .dropdown-menu {
+    background: #1d1d1d;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+body.dark-mode .dropdown-menu p,
+body.dark-mode .dropdown-menu h6 {
+    color: #f1f1f1 !important;
+}
+
+/* Page Banner */
+body.dark-mode .page-banner {
+    background: #0a0a14;
+}
+
+body.dark-mode .page-banner::before {
+    color: rgba(191,161,88,0.04);
+}
+
+body.dark-mode .page-banner h1 {
+    color: #fff;
+}
+
+body.dark-mode .page-banner p {
+    color: rgba(255,255,255,0.55);
+}
+
+/* Properties Layout */
+body.dark-mode .properties-layout {
+    background: #1a1a1a;
+}
+
+/* Sidebar */
+body.dark-mode .sidebar {
+    background: #0a0a14;
+    border-right-color: rgba(255,255,255,0.06);
+}
+
+body.dark-mode .sidebar a {
+    color: #aaa;
+}
+
+body.dark-mode .sidebar a:hover {
+    color: var(--gold);
+    background: rgba(191,161,88,0.06);
+}
+
+body.dark-mode .sidebar a.active {
+    color: var(--gold-light);
+    background: rgba(191,161,88,0.1);
+    border-left-color: var(--gold);
+}
+
+/* Content Area */
+body.dark-mode .content-area {
+    background: #1a1a1a;
+}
+
+body.dark-mode .content-header {
+    border-bottom-color: rgba(255,255,255,0.06);
+}
+
+body.dark-mode .content-header h2 {
+    color: #fff;
+}
+
+body.dark-mode .content-header .result-count {
+    color: #999;
+}
+
+/* Property Cards */
+body.dark-mode .prop-card {
+    background: #1c1c1c;
+    border-color: rgba(255,255,255,0.06);
+}
+body.dark-mode .prop-img-wrap img {
+    transition: transform 0.6s ease;
+}
+
+body.dark-mode .prop-card:hover .prop-img-wrap img {
+    transform: scale(1.06);
+}
+body.dark-mode .prop-card:hover {
+    box-shadow: 0 16px 36px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .prop-body h6 {
+    color: #fff;
+}
+
+body.dark-mode .prop-type {
+    color: var(--gold-light);
+}
+
+body.dark-mode .prop-location {
+    color: #aaa;
+}
+
+body.dark-mode .prop-desc {
+    color: #aaa;
+}
+
+body.dark-mode .prop-footer {
+    border-top-color: rgba(255,255,255,0.06);
+}
+
+body.dark-mode .prop-specs {
+    color: #999;
+}
+
+body.dark-mode .prop-price {
+    color: var(--gold-light);
+}
+
+body.dark-mode .prop-units-badge {
+    background: rgba(10,10,20,0.85);
+}
+
+/* Empty State */
+body.dark-mode .empty-state {
+    color: #888;
+}
+
+body.dark-mode .empty-state i {
+    color: rgba(191,161,88,0.2);
+}
+
+/* Chat */
+body.dark-mode #chat-window {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+body.dark-mode #chat-messages {
+    background: #111;
+}
+
+body.dark-mode .msg-bot {
+    background: #2a2a2a;
+    color: #f1f1f1;
+}
+
+body.dark-mode .chat-input-area {
+    background: #1a1a1a;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+body.dark-mode .chat-input-area input {
+    background: #2a2a2a;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #fff;
+}
+
+/* Footer */
+body.dark-mode .footer {
+    background: #171717;
+}
+
+body.dark-mode .footer-about-text,
+body.dark-mode .footer a,
+body.dark-mode .footer-contact span {
+    color: #d4d4d4;
+}
+
+/* Responsive sidebar */
+@media (max-width: 992px) {
+    body.dark-mode .sidebar {
+        border-bottom-color: rgba(255,255,255,0.06);
+    }
+    body.dark-mode .sidebar a.active {
+        border-bottom-color: var(--gold);
+        border-left: none;
+    }
+}
+</style>
+</head>
+<body id="top">
+
+<!-- Top Contact -->
+<div class="top-contact">
+    <div>ITPH.com.ph &nbsp;|&nbsp; (+63) 927 933 3923</div>
+    <div class="social-icons">
+        <a href="#"><i class="bi bi-facebook"></i></a>
+        <a href="#"><i class="bi bi-instagram"></i></a>
+        <a href="#"><i class="bi bi-tiktok"></i></a>
+    </div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand" href="index.php">ITPH</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav me-3">
+        <li class="nav-item"><a class="nav-link" href="../index.php">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="about_us.php">About Us</a></li>
+        <li class="nav-item"><a class="nav-link active-link" href="all_properties.php">Properties</a></li>
+        <li class="nav-item"><a class="nav-link" href="contact_us.php">Contact Us</a></li>
+        <li class="nav-item"><a class="nav-link" href="vlogs.php">Media</a></li>
+      </ul>
+
+      <?php if(isset($_SESSION['user_id'])): ?>
+      <?php
+        $nav_fullname = $_SESSION['fullname'] ?? '';
+        $nav_initials = strtoupper(implode('', array_map(fn($w) => $w[0], explode(' ', trim($nav_fullname)))));
+        $nav_initials = substr($nav_initials, 0, 2);
+      ?>
+      <div class="dropdown" style="display:flex; align-items:center; gap:10px;">
+        <a href="account.php" title="My Account" style="
+            width:38px; height:38px; border-radius:50%;
+            background:var(--green); color:#fff;
+            font-size:0.75rem; font-weight:600; letter-spacing:0.05em;
+            display:flex; align-items:center; justify-content:center;
+            border:2px solid var(--gold-light); text-decoration:none;
+            transition:transform .2s, box-shadow .2s;
+        " onmouseover="this.style.transform='scale(1.07)';this.style.boxShadow='0 4px 14px rgba(191,161,88,0.35)'"
+           onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
+          <?= htmlspecialchars($nav_initials) ?>
+        </a>
+        <a href="log_out.php" title="Logout" style="color:#7a7a8a;font-size:1.1rem;transition:color .2s;"
+           onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='#7a7a8a'">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
+      </div>
+      <?php else: ?>
+        <a href="login.php" class="btn btn-reserve">Log in</a>
+      <?php endif; ?>
+
+      <div class="theme-switch" id="darkModeToggle">
+          <div class="theme-switch-slider">
+              <i class="bi bi-sun-fill sun-icon"></i>
+              <i class="bi bi-moon-fill moon-icon"></i>
+          </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Page Banner -->
+<section class="page-banner">
+    <div class="container">
+        <span class="section-label" data-aos="fade-up">Iloilo Top Property Homes</span>
+        <h1 data-aos="fade-up" data-aos-delay="80">Find your <em>perfect home</em><br>in Iloilo.</h1>
+        <p data-aos="fade-up" data-aos-delay="160">Quality-built homes designed for comfort, convenience, and community — perfect for families and future homeowners.</p>
+
+        <form class="hero-search" method="GET" action="all_properties.php" data-aos="fade-up" data-aos-delay="220">
+            <?php if ($typeFilter !== ''): ?>
+                <input type="hidden" name="type" value="<?= htmlspecialchars($typeFilter) ?>">
+            <?php endif; ?>
+            <?php if ($sort !== 'newest'): ?>
+                <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+            <?php endif; ?>
+            <input type="text" name="search" placeholder="Search by title or location…" value="<?= htmlspecialchars($search) ?>">
+            <button type="submit"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+</section>
+
+<!-- Properties Layout -->
+<div class="properties-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <span class="sidebar-label">Browse by</span>
+        <a href="all_properties.php" class="<?= ($typeFilter === '' && $currentPage === 'all_properties.php') ? 'active' : '' ?>">
+            <span class="link-left"><i class="bi bi-grid"></i> All Properties</span>
+        </a>
+
+        <?php foreach ($allProperties as $page): ?>
+            <a href="all_properties.php?type=<?= urlencode($page) ?>"
+               class="<?= ($typeFilter === $page) ? 'active' : '' ?>">
+                <span class="link-left"><i class="bi bi-house"></i> <?= htmlspecialchars(propLabel($page, $typeLabels)) ?></span>
+            </a>
+        <?php endforeach; ?>
+
+        <?php
+            $phirstBranch = $_GET['branch'] ?? '';
+            $phirstDropdownOpen = ($currentPage === 'phrst.php') ? 'open' : '';
+        ?>
+        <div class="nav-dropdown <?= $phirstDropdownOpen ?>">
+            <button type="button" class="nav-dropdown-toggle" onclick="toggleSidebarDropdown(this)">
+                <i class="bi bi-house"></i>
+                <span>PHIRST</span>
+                <i class="bi bi-chevron-down dropdown-arrow"></i>
+            </button>
+            
+            <div class="nav-dropdown-menu">
+                <a href="phrst-ilo.php?branch=iloilo"
+                   class="<?= ($currentPage === 'phrst-ilo.php' && $phirstBranch === 'iloilo') ? 'active' : '' ?>">
+                    ILOILO
+                </a>
+                <a href="phrst.php?branch=bacolod"
+                   class="<?= ($currentPage === 'phrst.php' && $phirstBranch === 'bacolod') ? 'active' : '' ?>">
+                    BACOLOD
+                </a>
+            </div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content-area">
+        <div class="content-header" data-aos="fade-up">
+            <h2>All Listings</h2>
+            <span class="result-count"><?= $total ?> propert<?= $total === 1 ? 'y' : 'ies' ?> found</span>
+        </div>
+
+        <div class="toolbar" data-aos="fade-up">
+            <div class="filter-chips">
+                <?php if ($search !== ''): ?>
+                    <span class="filter-chip">
+                        <i class="bi bi-search"></i> "<?= htmlspecialchars($search) ?>"
+                        <a href="all_properties.php?<?= http_build_query(array_filter(['type' => $typeFilter, 'sort' => $sort !== 'newest' ? $sort : null])) ?>" title="Clear search"><i class="bi bi-x"></i></a>
+                    </span>
+                <?php endif; ?>
+                <?php if ($typeFilter !== ''): ?>
+                    <span class="filter-chip">
+                        <i class="bi bi-house"></i> <?= htmlspecialchars(propLabel($typeFilter, $typeLabels)) ?>
+                        <a href="all_properties.php?<?= http_build_query(array_filter(['search' => $search !== '' ? $search : null, 'sort' => $sort !== 'newest' ? $sort : null])) ?>" title="Clear filter"><i class="bi bi-x"></i></a>
+                    </span>
+                <?php endif; ?>
+            </div>
+
+            <form class="sort-select" method="GET" action="all_properties.php">
+                <?php if ($search !== ''): ?><input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>"><?php endif; ?>
+                <?php if ($typeFilter !== ''): ?><input type="hidden" name="type" value="<?= htmlspecialchars($typeFilter) ?>"><?php endif; ?>
+                <label for="sortPicker">Sort</label>
+                <select name="sort" id="sortPicker" onchange="this.form.submit()">
+                    <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest</option>
+                    <option value="price_low" <?= $sort === 'price_low' ? 'selected' : '' ?>>Price: Low to High</option>
+                    <option value="price_high" <?= $sort === 'price_high' ? 'selected' : '' ?>>Price: High to Low</option>
+                </select>
+            </form>
+        </div>
+
+        <div class="prop-grid">
+        <?php
+        if ($result && $result->num_rows > 0):
+            $i = 0;
+            while ($prop = $result->fetch_assoc()):
+                $title       = !empty($prop['title']) ? $prop['title'] : 'Property';
+                $propertyPage = !empty($prop['property_page']) ? $prop['property_page'] : 'Property';
+                $location    = !empty($prop['location']) ? $prop['location'] : 'Iloilo';
+                $description = !empty($prop['description']) ? $prop['description'] : 'No description available.';
+                $first_image = 'image_7.jpg';
+
+                $images = [];
+                $imageQuery = $conn->prepare("SELECT image FROM property_images WHERE property_id=?");
+                $imageQuery->bind_param("i", $prop['id']);
+                $imageQuery->execute();
+                $imageResult = $imageQuery->get_result();
+                while ($img = $imageResult->fetch_assoc()) {
+                    $images[] = decrypt_data($img['image']);
+                }
+                if (empty($images) && !empty($prop['display_image'])) $images[] = decrypt_data($prop['display_image']);
+                if (!empty($images[0])) $first_image = $images[0];
+                $delay = ($i % 3) * 80;
+                $i++;
+        ?>
+            <a href="view_property.php?id=<?= urlencode($prop['id']) ?>" class="prop-card"
+               data-aos="fade-up" data-aos-delay="<?= $delay ?>">
+                <div class="prop-img-wrap">
+                    <img src="../photo/uploads/<?= htmlspecialchars($first_image) ?>"
+                         alt="<?= htmlspecialchars($title) ?>" loading="lazy">
+                    <span class="prop-tag"><?= htmlspecialchars(propLabel($propertyPage, $typeLabels)) ?></span>
+                    <span class="prop-units-badge"><i class="bi bi-building"></i> <?= htmlspecialchars($prop['available_units'] ?? 0) ?> units left</span>
+                </div>
+                <div class="prop-body">
+                    <h6><?= htmlspecialchars($title) ?></h6>
+                    <div class="prop-type"><?= htmlspecialchars(propLabel($propertyPage, $typeLabels)) ?></div>
+                    <div class="prop-location">
+                        <i class="bi bi-geo-alt-fill"></i>
+                        <?= htmlspecialchars($location) ?>
+                    </div>
+                    <p class="prop-desc"><?= htmlspecialchars($description) ?></p>
+                    <div class="prop-footer">
+                        <div class="prop-specs">
+                            <span><i class="bi bi-house-door"></i> <?= htmlspecialchars($prop['bedrooms']) ?> Bedroom</span>
+                            <span><i class="bi bi-droplet"></i> <?= htmlspecialchars($prop['bathrooms']) ?> Bathroom</span>
+                        </div>
+                        <div class="prop-price">₱<?= number_format($prop['price'], 0) ?></div>
+                    </div>
+                </div>
+            </a>
+        <?php endwhile; else: ?>
+            <div class="empty-state">
+                <i class="bi bi-house-x"></i>
+                <p>No properties match your search.<br>Try adjusting your filters.</p>
+                <a href="all_properties.php" class="btn-clear">Clear all filters</a>
+            </div>
+        <?php endif; ?>
+        </div>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="footer mt-0">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4 mb-4 text-center text-md-start">
+                <div class="footer-logo-text mb-2">ITPH</div>
+                <hr class="footer-divider">
+                <p class="footer-about-text">Bringing quality living closer to your future. Iloilo Top Property Homes presents beautiful houses within well-planned subdivisions in Iloilo, providing a safe environment and modern living for homeowners.</p>
+            </div>
+            <div class="col-md-2 mb-4">
+                <h6>Quick Links</h6>
+                <ul class="list-unstyled" style="line-height:2.1;">
+                    <li><a href="../index.php">Home</a></li>
+                    <li><a href="about_us.php">About Us</a></li>
+                    <li><a href="vlogs.php">Media</a></li>
+                    <li><a href="news.php">News</a></li>
+                </ul>
+            </div>
+            <div class="col-md-2 mb-4">
+                <h6>Properties</h6>
+                <ul class="list-unstyled" style="line-height:2.1;">
+                    <li><a href="phrst.php">PHIRST</a></li>
+                </ul>
+            </div>
+            <div class="col-md-4 mb-4">
+                <h6>Tools</h6>
+                <ul class="list-unstyled" style="line-height:2.1;">
+                    <li><a href="contact_us.php">Contact Us</a></li>
+                    <li><a href="reservation.php">Book Now</a></li>
+                    <li><a href="account.php">Account</a></li>
+                </ul>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12 text-center">
+                <a href="#top" class="back-to-top">↑ Back to Top</a>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-center footer-contact">
+                <span><i class="bi bi-geo-alt-fill"></i> Pavia, Iloilo City</span> &nbsp;|&nbsp;
+                <span><i class="bi bi-envelope-fill"></i> ITPH.com</span> &nbsp;|&nbsp;
+                <span><i class="bi bi-telephone-fill"></i> (+63) 912 345 6789</span>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-center footer-social">
+                <a href="#"><i class="bi bi-facebook"></i></a>
+                <a href="#"><i class="bi bi-instagram"></i></a>
+                <a href="#"><i class="bi bi-tiktok"></i></a>
+            </div>
+        </div>
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0 14px;">
+        <div class="row">
+            <div class="col-12 text-center" style="font-size:0.8rem; color:rgba(255,255,255,0.6);">
+                © 2026 Iloilo Top Property Homes. All rights reserved. &nbsp;
+                <a href="#">Privacy Policy</a> | <a href="#">Terms and Conditions</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>
+AOS.init({ once: true, offset: 50 });
+
+window.addEventListener('scroll', () => {
+    const navbar = document.querySelector('.navbar');
+    const topContact = document.querySelector('.top-contact');
+    if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+        topContact.classList.add('hidden');
+    } else {
+        navbar.classList.remove('scrolled');
+        topContact.classList.remove('hidden');
+    }
+});
+
+function toggleSidebarDropdown(button) {
+    const dropdown = button.parentElement;
+    const wasOpen = dropdown.classList.contains('open');
+    document.querySelectorAll('.sidebar .nav-dropdown.open').forEach(d => {
+        if (d !== dropdown) d.classList.remove('open');
+    });
+    dropdown.classList.toggle('open', !wasOpen);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.sidebar .nav-dropdown').forEach(dropdown => {
+        if (dropdown.querySelector('.nav-dropdown-menu a.active')) {
+            dropdown.classList.add('open');
+        }
+    });
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.sidebar .nav-dropdown.open')
+            .forEach(d => d.classList.remove('open'));
+    }
+});
+
+function toggleChat() {
+    const cw = document.getElementById('chat-window');
+    cw.style.display = cw.style.display === 'flex' ? 'none' : 'flex';
+}
+
+async function sendChat() {
+    const field = document.getElementById('user-input-field');
+    const msgs = document.getElementById('chat-messages');
+    const msg = field.value.trim();
+    if (!msg) return;
+    const userDiv = document.createElement('div');
+    userDiv.className = 'msg msg-user';
+    userDiv.textContent = msg;
+    msgs.appendChild(userDiv);
+    field.value = '';
+    msgs.scrollTop = msgs.scrollHeight;
+
+    const botDiv = document.createElement('div');
+    botDiv.className = 'msg msg-bot';
+    botDiv.textContent = 'Typing…';
+    msgs.appendChild(botDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    try {
+        const fd = new FormData();
+        fd.append('message', msg);
+        fd.append('csrf_token', '<?= $csrf_token ?>');
+        const res = await fetch('../backends/chat.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        botDiv.textContent = data.reply;
+    } catch {
+        botDiv.textContent = 'Connection error. Please try later.';
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+const darkToggle = document.getElementById('darkModeToggle');
+if (localStorage.getItem('darkMode') === 'enabled') {
+    document.body.classList.add('dark-mode');
+}
+if (darkToggle) {
+    darkToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
+    });
+}
+</script>
+</body>
+<script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
+<script src="https://files.bpcontent.cloud/2026/05/16/02/20260516020411-RS0TP9AJ.js" defer></script>
+</html>

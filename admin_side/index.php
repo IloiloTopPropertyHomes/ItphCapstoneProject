@@ -649,16 +649,21 @@ if (isset($_POST['assign_agent'])) {
         exit();
     }
 
-    ob_end_flush();
+  
     // ================= PDF REPORT DOWNLOAD =================
     if (isset($_GET['download_report'])) {
 
-        $options = new Options();
-        $options->set('isRemoteEnabled', true);
+    // Clean ALL previous output before sending PDF
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
 
-        $dompdf = new Dompdf($options);
+    $options = new Options();
+    $options->set('isRemoteEnabled', true);
 
-        ob_start();
+    $dompdf = new Dompdf($options);
+
+    
         ?>
 
         <!DOCTYPE html>
